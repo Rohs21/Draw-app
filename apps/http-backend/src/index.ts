@@ -18,7 +18,7 @@ app.post("/signup",(req, res)=>{
         })
     }
     res.json({
-        userId: "123"
+        userId: "123",
     })
 })
 
