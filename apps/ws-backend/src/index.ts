@@ -14,7 +14,7 @@ wss.on('connection', function connection(ws, request) {
   const token = queryParams.get('token') ||"";
   const decoded = jwt.verify(token, JWT_SECRET);
   
-  if(typeof decoded = "string"){
+  if(typeof decoded == "string"){
     wss.close();
     return;
   }

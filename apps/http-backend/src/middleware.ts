@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { JWT_SECRET } from "./config";
+import { JWT_SECRET } from "@repo/backend-common/config";
 import jwt from "jsonwebtoken";
-
 
 export function middleware(req: Request, res: Response, next: NextFunction){
     const header = req.headers["authorization"] ?? "";
@@ -12,7 +11,7 @@ export function middleware(req: Request, res: Response, next: NextFunction){
         next();
     }else{
         res.status(403).json({
-            message: "Unauthorized";
+            message: "Unauthorized"
         })
     }
 }
