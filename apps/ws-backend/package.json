@@ -19,6 +19,6 @@
   },
   "devDependencies": {
      "@repo/typescript-config": "workspace:*",
-     "@repo/backend-common":"workspace:*"
+     "@repo/backend-common": "workspace:*"
   }
 }
