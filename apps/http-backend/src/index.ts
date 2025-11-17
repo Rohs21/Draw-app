@@ -43,7 +43,7 @@ app.post("/signup", async(req, res)=>{
 
     console.log("🔥 Unknown error:", err);
     return res.status(500).json({
-        message: "Unknown error",
+        message: "Unknown err",
     });
 }
 
