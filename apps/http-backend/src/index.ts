@@ -51,16 +51,29 @@ app.post("/signup", async(req, res)=>{
     
 })
 
-app.post("/signin",(req, res)=>{
-
-        const userId=1;
-        const token = jwt.sign({
-            userId
-        }, JWT_SECRET);
-
+app.post("/signin", async(req, res)=>{
+    const parsedData = CreateUserSchema.safeParse(req.body);
+    if(!parsedData.success){
         res.json({
-            token
+            message: "Incorrect inputs"
         })
+        return
+    }
+    const user = await prismaClient.user.findUnique({
+        where: {
+            email: req.body.username
+        }
+    })
+
+    const userId=1;
+    const token = jwt.sign({
+        userId
+    }, JWT_SECRET);
+
+    res.json({
+        token
+   })        
+
 })
 
 app.post("/room", middleware, (req, res)=>{
