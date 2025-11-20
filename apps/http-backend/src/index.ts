@@ -20,7 +20,7 @@ app.post("/signup", async(req, res)=>{
         })
     }
     try{
-        const user =  await prismaClient.user.create({
+        const user = await prismaClient.user.create({
             data: {
                 email : ParsedData.data?.username,
                 password : ParsedData.data?.password,
@@ -30,14 +30,27 @@ app.post("/signup", async(req, res)=>{
         res.json({
             userId: user.id
         })
-} catch (e) {
-    res.status(411).json({
-        message: "User already exists"
-    })    
-}
+    } catch (e) {
+        res.status(411).json({
+            message: "User already exists"
+        })    
+    }
+});
 
-
-    
+app.get("/chat/:roomId", async(req, res) =>{
+    const roomId = Number(req.params.roomId);
+    const messages = await prismaClient.chat.findMany({
+        where: {
+            roomId: roomId
+        },
+        orderBy: {
+            id: 'desc'
+        },
+        take: 50
+    });
+    res.json({
+        messages
+    })
 })
 
 app.post("/signin", async(req, res)=>{
