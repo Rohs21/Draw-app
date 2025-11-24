@@ -4,9 +4,11 @@ import { JWT_SECRET } from '@repo/backend-common/config';
 import { middleware } from "./middleware";
 import { CreateUserSchema, SigninSchema, CreatRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
+import cors from "cors";
 
 const app = express();
 app.use(express.json());
+app.use(cors())
 
 app.post("/signup", async (req, res) => {
 
@@ -78,6 +80,7 @@ app.post("/room", middleware, async (req, res) => {
         })
         return;
     }
+    // @ts-ignore: TODO: Fix this
     const userId = req.userId;
 
     try {
@@ -104,7 +107,6 @@ app.get("/chats/:roomId", async (req, res) => {
         console.log(req.params.roomId);
         const messages = await prismaClient.chat.findMany({
             where: {
-                
                 roomId: roomId
             },
             orderBy: {
@@ -121,7 +123,8 @@ app.get("/chats/:roomId", async (req, res) => {
         res.json({
             messages: []
         })
-    }   
+    }
+    
 })
 
 app.get("/room/:slug", async (req, res) => {

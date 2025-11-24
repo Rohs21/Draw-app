@@ -99,7 +99,7 @@ const App: FC = () => {
             {/* CTA Buttons */}
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button variant="cta" size="lg" className="h-14 px-8 text-lg rounded-xl">
-                Start Drawing Free
+                <Link href="/canvas">Start Drawing Free</Link>
                 <Pencil className="ml-3 h-5 w-5" />
               </Button>
               <Link href="#" className="flex items-center text-indigo-400 hover:text-indigo-300 font-semibold transition-colors mt-4 sm:mt-0">
