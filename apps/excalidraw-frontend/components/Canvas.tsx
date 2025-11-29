@@ -1,4 +1,4 @@
-import { initDraw } from "@/draw/page";
+import { initDraw } from "@/draw";
 import { useEffect, useRef } from "react";
 
 export function Canvas({
