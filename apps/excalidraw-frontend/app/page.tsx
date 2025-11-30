@@ -1,6 +1,6 @@
 import React, { FC, HTMLAttributes, ButtonHTMLAttributes } from 'react';
 import { Pencil, Share2, Users2, Sparkles, Github, Download, Zap, LineChart } from 'lucide-react';
-import BannerSVG from '../public/banner.svg';
+
 // --- Type Definitions ---
 
 interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
@@ -88,9 +88,9 @@ const App: FC = () => {
       <header className="relative py-24 sm:py-32 overflow-hidden fade-sides" style={{ backgroundImage: "url('../Banner.png')" }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className={`text-5xl md:text-7xl font-extrabold tracking-tight ${themeClasses.foreground}`}>
+            <h1 className={`text-lg md:text-7xl font-bold tracking-tight ${themeClasses.foreground}`}>
               <span className="block">Step up your</span>
-              <span className={`bg-indigo-200 px-4 py-2 rounded-lg inline-block`} style={{marginLeft: 'auto', marginRight: 'auto'}}>SyncSketch game</span>
+              <span className={`bg-indigo-200 px-4 py-2 mt-5 rounded-lg inline-block font-extrabold`} style={{marginLeft: 'auto', marginRight: 'auto'}}>SyncSketch game</span>
             </h1>
             <p className={`mx-auto mt-8 max-w-3xl text-lg ${themeClasses.mutedForeground}`}>
               Save your drawings to the cloud. Collaborate seamlessly. Unlock additional features.
@@ -100,15 +100,18 @@ const App: FC = () => {
             </p>
             
             {/* CTA Buttons */}
-            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="https://github.com/Rohs21" className="flex items-center justify-center bg-yellow-400 text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors">
-                View on Github
+            <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/dashboard" className="flex items-center justify-center bg-[#ffe599] border border-black text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors">
+                Start Drawing
+              </Link>
+              <Link href="" className="flex items-center justify-center bg-[#ffe599] border border-black text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors">
+                Live Demo
               </Link>
             </div>
 
             {/* Arrow Image */}
-            <div className="mt-16 flex justify-center">
-              <img src="https://plus.excalidraw.com/images/pen-tip.svg" alt="Arrow" className="h-25 w-15" />
+            <div className="mt-10 flex justify-center">
+              <img src="https://plus.excalidraw.com/images/pen-tip.svg" alt="Arrow" className="h-22 w-12" />
             </div>
           </div>
         </div>

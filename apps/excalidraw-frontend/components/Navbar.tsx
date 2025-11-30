@@ -107,7 +107,7 @@ export default function Navbar() {
               href="/signup"
               className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white transition-colors font-semibold shadow-md hover:shadow-lg"
             >
-              Free whiteboard
+              Dashboard
             </Link>
           </div>
         </div>
