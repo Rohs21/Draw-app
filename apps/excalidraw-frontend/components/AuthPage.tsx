@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { PenTool, ArrowRight, Share2, Users, Layers } from 'lucide-react';
+import Logo from '../public/image.png';
+import Image from 'next/image';
 
 const SLIDES = [
   {
@@ -60,7 +62,7 @@ export function AuthPage({ isSignin = true }) {
 
       {/* Top Logo */}
       <div className="absolute top-8 left-0 w-full flex justify-center items-center gap-2 z-20 pointer-events-none">
-        <PenTool className="w-6 h-6 text-slate-800" />
+        <Image src={Logo} alt="Logo" className='h-10 w-8'></Image>
         <span className="text-4xl font-black text-slate-800 tracking-tight">SyncSketch</span>
       </div>
 
