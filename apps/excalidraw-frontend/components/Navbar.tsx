@@ -4,11 +4,15 @@ import Image from "next/image";
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Moon, Sun, Github } from 'lucide-react';
+import { toast } from 'react-hot-toast'; // Assuming react-hot-toast is installed and configured
 import Logo from '../public/image.png';
+import { useRouter } from 'next/navigation'; // For redirect after logout
 
 export default function Navbar() {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -21,6 +25,10 @@ export default function Navbar() {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     }
+
+    // Check for auth token to determine login state
+    const token = localStorage.getItem('token'); // Assuming token key is 'authToken'
+    setIsLoggedIn(!!token);
   }, []);
 
   const toggleTheme = () => {
@@ -32,6 +40,13 @@ export default function Navbar() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token'); // Delete the token
+    setIsLoggedIn(false);
+    toast.success('Logout successful'); // Show toast
+    router.push('/'); // Redirect to home after logout
   };
 
   if (!mounted) return null;
@@ -68,7 +83,7 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Right Side - GitHub, Theme Toggle, Sign In and Sign Up */}
+          {/* Right Side - GitHub, Theme Toggle, Auth Buttons */}
           <div className="flex items-center gap-4">
             {/* GitHub Button */}
             <Link
@@ -94,21 +109,44 @@ export default function Navbar() {
               )}
             </button>
 
-            {/* Sign In Button */}
-            <Link
-              href="/signin"
-              className="px-6 py-2.5 rounded-lg text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium border border-gray-300 dark:border-gray-700"
-            >
-              Sign in
-            </Link>
+            {/* Conditional Auth Buttons */}
+            {!isLoggedIn ? (
+              <>
+                {/* Sign In Button */}
+                <Link
+                  href="/signin"
+                  className="px-6 py-2.5 rounded-lg text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium border border-gray-300 dark:border-gray-700"
+                >
+                  Sign in
+                </Link>
 
-            {/* Sign Up Button */}
-            <Link
-              href="/signup"
-              className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white transition-colors font-semibold shadow-md hover:shadow-lg"
-            >
-              Dashboard
-            </Link>
+                {/* Sign Up Button */}
+                <Link
+                  href="/signup"
+                  className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white transition-colors font-semibold shadow-md hover:shadow-lg"
+                >
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                {/* Dashboard Button (for logged in user) */}
+                <Link
+                  href="/dashboard"
+                  className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white transition-colors font-semibold shadow-md hover:shadow-lg"
+                >
+                  Dashboard
+                </Link>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2.5 rounded-lg text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium border border-gray-300 dark:border-gray-700"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

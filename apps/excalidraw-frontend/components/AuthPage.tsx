@@ -55,10 +55,14 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
   }
 
   async function handleSignin(email: string, password: string) {
-    await api.post("/signin", {
+    const res = await api.post("/signin", {
       username: email,
       password
     });
+    if(res.data.token){
+      localStorage.setItem('token', res.data.token); // Store the token
+      console.log("Token stored:", res.data.token);
+    }
     toast.success("Signin successful!");
     // Delay for cookie sync + push + refresh to revalidate server data
     setTimeout(() => {
@@ -163,7 +167,7 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
 
       {/* Top Logo (unchanged) */}
       <div className="absolute top-8 left-0 w-full flex justify-center items-center gap-2 z-20 pointer-events-none">
-        <Image src={Logo} alt="Logo" className='h-10 w-8' />
+        <Image src={Logo} alt="Logo" className='h-10 w-10' />
         <span className="text-4xl font-black text-slate-800 tracking-tight">SyncSketch</span>
       </div>
 
@@ -204,7 +208,7 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
           <div className="w-full bg-slate-50 p-8 md:p-12 flex flex-col justify-center relative">
             <div className="max-w-sm mx-auto w-full">
               {/* Header */}
-              <div className="mb-8">
+              <div className="mb-6">
                 <h1 className="text-3xl font-bold text-slate-900 mb-2">
                   {isSignin ? "Hi there!" : "Join Us!"}
                 </h1>
@@ -215,7 +219,7 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
 
               {/* Error Message */}
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                <div className="mb-1 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                   {error}
                 </div>
               )}
@@ -235,7 +239,7 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
                       placeholder="Enter your full name"
                       value={name}
                       required={!isSignin}
-                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-800 placeholder-slate-400"
+                      className="w-full px-6 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-800 placeholder-slate-400"
                     />
                   </div>
                 )}
@@ -283,21 +287,21 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full group bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-xl py-3 px-4 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 mt-6" 
+                  className="w-full group bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-xl py-2 px-4 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2 mt-6" 
                 >
                   <span>{isSubmitting ? "Processing..." : (isSignin ? "Sign in" : "Sign up")}</span>
                   {!isSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                 </button>
 
                 {/* Divider */}
-                <div className="relative flex py-3 items-center mt-2">
+                <div className="relative flex items-center">
                   <div className="flex-grow border-t border-slate-300"></div>
                   <span className="flex-shrink-0 mx-3 text-slate-400 text-xs">or</span>
                   <div className="flex-grow border-t border-slate-300"></div>
                 </div>
 
                 {/* Toggle Signin/Signup */}
-                <div className="text-center text-sm">
+                <div className="text-center text-sm -mt-10">
                   <p className="text-slate-600">
                     {isSignin ? "Don't have an account? " : "Already have an account? "}
                     <button type="button" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors cursor-pointer">
