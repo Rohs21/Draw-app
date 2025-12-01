@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 // @ts-ignore
 import "./globals.css";
 import ClientNavbar from "@/components/ClientNavbar";
+import { Toaster } from "react-hot-toast"; // Add this import
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,23 @@ export default function RootLayout({
       >
         <ClientNavbar />
         {children}
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#10B981', // Green for success (matches Tailwind)
+              color: '#fff',
+              fontFamily: 'var(--font-geist-sans)', // Use your Geist font
+            },
+            success: {
+              style: {
+                background: '#10B981',
+                color: '#fff',
+              },
+            },
+          }} 
+        /> {/* Add this: Global toasts with theme */}
       </body>
     </html>
   );

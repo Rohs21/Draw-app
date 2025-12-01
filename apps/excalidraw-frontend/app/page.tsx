@@ -4,19 +4,21 @@ import {
   Share2,
   Users2,
   Sparkles,
-  Github,
   Download,
   Zap,
-  Shield,
   PenTool,
   Layers,
   MousePointer2,
   Star,
   ArrowRight,
-  Play,
-  Check,
   MonitorSmartphone,
   Palette,
+  Lightbulb,
+  Rocket,
+  Target,
+  Workflow,
+  Globe,
+  Clock,
 } from "lucide-react"
 
 // --- Type Definitions ---
@@ -146,6 +148,30 @@ const App: FC = () => {
         </div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-blue-100 text-blue-700 text-sm font-medium rounded-full mb-4">
+              Simple & Intuitive
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
+              How it{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10">Works</span>
+                <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path
+                    d="M0 8 Q 25 2, 50 8 T 100 8"
+                    stroke="#3b82f6"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mt-4">
+              Get started in seconds and collaborate with your team effortlessly.
+            </p>
+          </div>
+
           <div className="relative mx-auto max-w-5xl">
             {/* Browser-style canvas mockup */}
             <div className="relative rounded-3xl border-2 border-gray-200 bg-white shadow-2xl shadow-blue-500/10 overflow-hidden">
@@ -254,6 +280,53 @@ const App: FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              {
+                step: "01",
+                icon: PenTool,
+                title: "Create Your Canvas",
+                description:
+                  "Start with a blank canvas or choose from templates. Simply open SyncSketch and begin sketching your ideas instantly.",
+                color: "blue",
+              },
+              {
+                step: "02",
+                icon: Share2,
+                title: "Invite Your Team",
+                description:
+                  "Share a link with collaborators. They can join instantly without signing up. Watch cursors move in real-time.",
+                color: "green",
+              },
+              {
+                step: "03",
+                icon: Download,
+                title: "Export & Share",
+                description:
+                  "Download your work as PNG, SVG, or JSON. Embed in docs, presentations, or integrate with your workflow.",
+                color: "purple",
+              },
+            ].map((item, index) => (
+              <div key={index} className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+                <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-100 group-hover:border-blue-200 transition-all duration-300 hover:shadow-xl">
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="text-4xl font-bold text-gray-200 group-hover:text-blue-200 transition-colors">
+                      {item.step}
+                    </span>
+                    <div
+                      className={`w-12 h-12 rounded-xl bg-${item.color}-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      <item.icon className={`w-6 h-6 text-${item.color}-600`} />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -445,55 +518,157 @@ const App: FC = () => {
         </div>
       </section>
 
-      <section className="py-20 md:py-28">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="relative rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-10 md:p-16 overflow-hidden">
-              {/* Decorative blurs */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl" />
+      {/* New Section 1: Interactive Use Cases */}
+      <section className="py-20 md:py-28 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-0 w-72 h-72 bg-blue-100 rounded-full opacity-30 blur-3xl animate-pulse" />
+          <div
+            className="absolute bottom-1/4 right-0 w-96 h-96 bg-indigo-100 rounded-full opacity-30 blur-3xl animate-pulse"
+            style={{ animationDelay: "1s" }}
+          />
+        </div>
 
-              <div className="relative z-10 text-center">
-                <span className="inline-block px-4 py-1.5 bg-white/10 text-white text-sm font-medium rounded-full mb-6 border border-white/20">
-                  Free to start
-                </span>
-                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Ready to create something amazing?</h2>
-                <p className="text-blue-100 text-lg max-w-2xl mx-auto mb-10">
-                  Start with our generous free tier. Upgrade when you need advanced features and team collaboration.
-                </p>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <span className="inline-block px-4 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-full mb-4">
+              Endless Possibilities
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
+              Built for every{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10">use case</span>
+                <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path
+                    d="M0 8 Q 25 2, 50 8 T 100 8"
+                    stroke="#818cf8"
+                    strokeWidth="4"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </h2>
+          </div>
 
-                {/* Feature checklist */}
-                <div className="flex flex-wrap justify-center gap-4 mb-10">
-                  {["Unlimited canvases", "Real-time sync", "Export to PNG/SVG", "Up to 3 collaborators"].map(
-                    (feature) => (
-                      <div key={feature} className="flex items-center gap-2 text-white/90">
-                        <Check className="w-5 h-5 text-green-400" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ),
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Button
-                    variant="cta"
-                    size="lg"
-                    className="h-14 px-8 text-lg rounded-xl bg-white text-blue-700 hover:bg-blue-50 shadow-xl font-semibold"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                icon: Lightbulb,
+                title: "Brainstorming",
+                description: "Capture ideas as they flow. Mind maps, sticky notes, and freeform sketches.",
+                color: "amber",
+                delay: "0ms",
+              },
+              {
+                icon: Workflow,
+                title: "Flowcharts",
+                description: "Map processes and workflows with intuitive connectors and shapes.",
+                color: "blue",
+                delay: "100ms",
+              },
+              {
+                icon: Target,
+                title: "Wireframing",
+                description: "Sketch UI concepts rapidly. From mobile apps to complex dashboards.",
+                color: "green",
+                delay: "200ms",
+              },
+              {
+                icon: Globe,
+                title: "Remote Workshops",
+                description: "Run interactive sessions with distributed teams worldwide.",
+                color: "purple",
+                delay: "300ms",
+              },
+            ].map((item, index) => (
+              <div key={index} className="group relative" style={{ animationDelay: item.delay }}>
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br from-${item.color}-100 to-${item.color}-200 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform group-hover:scale-105`}
+                />
+                <div className="relative bg-white rounded-2xl p-6 border-2 border-gray-100 group-hover:border-transparent transition-all duration-500 hover:shadow-2xl transform hover:-translate-y-2">
+                  <div
+                    className={`w-14 h-14 rounded-2xl bg-${item.color}-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}
                   >
-                    Get Started Free
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="h-14 px-8 text-lg rounded-xl border-white/30 text-white hover:bg-white/10 bg-transparent"
-                  >
-                    <Play className="w-5 h-5 mr-2" />
-                    Watch Demo
-                  </Button>
+                    <item.icon className={`w-7 h-7 text-${item.color}-600`} />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* New Section 2: Stats & Social Proof with Animation */}
+      <section className="py-20 md:py-28 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+        {/* Animated background grid */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+            backgroundSize: "50px 50px",
+          }}
+        />
+
+        {/* Floating orbs */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500 rounded-full opacity-20 blur-3xl animate-pulse" />
+        <div
+          className="absolute bottom-20 right-20 w-48 h-48 bg-indigo-500 rounded-full opacity-20 blur-3xl animate-pulse"
+          style={{ animationDelay: "0.5s" }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-500 rounded-full opacity-10 blur-3xl animate-pulse"
+          style={{ animationDelay: "1s" }}
+        />
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+              Trusted by teams{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                worldwide
+              </span>
+            </h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              Join thousands of creators who have made SyncSketch their canvas of choice.
+            </p>
+          </div>
+
+          {/* Animated Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-16">
+            {[
+              { number: "50K+", label: "Active Users", icon: Users2 },
+              { number: "1M+", label: "Sketches Created", icon: PenTool },
+              { number: "99.9%", label: "Uptime", icon: Clock },
+              { number: "150+", label: "Countries", icon: Globe },
+            ].map((stat, index) => (
+              <div key={index} className="text-center group">
+                <div className="relative inline-block mb-4">
+                  <div className="absolute inset-0 bg-blue-500 rounded-xl opacity-20 blur-lg group-hover:opacity-40 transition-opacity" />
+                  <div className="relative w-16 h-16 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center group-hover:border-blue-500 transition-colors duration-300">
+                    <stat.icon className="w-8 h-8 text-blue-400" />
+                  </div>
+                </div>
+                <p className="text-3xl md:text-4xl font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">
+                  {stat.number}
+                </p>
+                <p className="text-gray-500 text-sm">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Brand logos placeholder */}
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-50">
+            {["Startup", "Agency", "Enterprise", "Studio", "Labs"].map((brand) => (
+              <div key={brand} className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gray-700 flex items-center justify-center">
+                  <Rocket className="w-4 h-4" />
+                </div>
+                <span className="font-medium">{brand}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
