@@ -66,7 +66,7 @@ export function AuthPage({ isSignin = true }: { isSignin?: boolean }) {
     toast.success("Signin successful!");
     // Delay for cookie sync + push + refresh to revalidate server data
     setTimeout(() => {
-      router.push("/");
+      router.push("/dashboard");
       router.refresh(); // Forces server re-fetch with new cookie
     }, 100);
   }

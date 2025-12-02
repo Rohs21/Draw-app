@@ -11,16 +11,24 @@ declare global {
 }
 
 export function middleware(req: Request, res: Response, next: NextFunction){
-    
-        const token = req.headers["authorization"] ?? "";
+    try {
+        const authHeader = req.headers["authorization"];
+        if (!authHeader) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        const token = authHeader.replace("Bearer ", "");
+
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        if((decoded as any).userId){
-                req.userId = (decoded as any).userId;
-                next();
-        }else{
-                res.status(403).json({
-                        message: "Unauthorized"
-                })
+        if ((decoded as any).userId) {
+            req.userId = (decoded as any).userId;
+            return next();
         }
+
+        return res.status(403).json({ message: "Unauthorized" });
+
+    } catch (error) {
+        return res.status(403).json({ message: "Unauthorized" });
+    }
 }

@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common/config';
@@ -24,7 +27,6 @@ app.post("/signup", async (req, res) => {
         const user = await prismaClient.user.create({
             data: {
                 email: parsedData.data?.username,
-                // TODO: Hash the pw
                 password: parsedData.data.password,
                 name: parsedData.data.name
             }
@@ -73,6 +75,7 @@ app.post("/signin", async (req, res) => {
 })
 
 app.post("/room", middleware, async (req, res) => {
+
     const parsedData = CreatRoomSchema.safeParse(req.body);
     if (!parsedData.success) {
         res.json({
@@ -80,7 +83,7 @@ app.post("/room", middleware, async (req, res) => {
         })
         return;
     }
-    // @ts-ignore: TODO: Fix this
+
     const userId = req.userId;
 
     try {
@@ -127,6 +130,26 @@ app.get("/chats/:roomId", async (req, res) => {
     
 })
 
+
+app.get('/rooms', middleware, async (req, res) => {
+    console.log("Getting room");
+    const userId = req.userId;
+
+    try {
+        const rooms = await prismaClient.room.findMany({
+            where: {
+            adminId: userId
+        }
+    });
+
+    res.json({ rooms });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+
 app.get("/room/:slug", async (req, res) => {
     const slug = req.params.slug;
     const room = await prismaClient.room.findFirst({
@@ -139,5 +162,40 @@ app.get("/room/:slug", async (req, res) => {
         room
     })
 })
+
+
+app.delete("/room/:id", middleware, async (req, res) => {
+  // Rename for clarity: The URL parameter is the slug now
+  const roomSlug = req.params.id; 
+  const userId = req.userId;
+
+  try {
+    // 1. Find the room using the SLUG
+    const room = await prismaClient.room.findUnique({
+      where: { slug: roomSlug }, // <-- **Key Change: Find by slug**
+    });
+
+    if (!room) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+
+    // 2. Authorization check (remains the same)
+    if (room.adminId !== userId) {
+      return res.status(403).json({ message: "You are not allowed to delete this room" });
+    }
+
+    // 3. Delete the room using the SLUG
+    await prismaClient.room.delete({
+      where: { slug: roomSlug }, // <-- **Key Change: Delete by slug**
+    });
+
+    res.status(200).json({ message: "Room deleted successfully", slug: roomSlug });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete room" });
+  }
+});
+
 
 app.listen(4000);
