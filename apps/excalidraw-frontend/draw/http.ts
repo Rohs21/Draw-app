@@ -27,3 +27,14 @@ export async function deleteShape(chatId: number) {
         return false;
     }
 }
+
+export async function updateShape(chatId: number, shape: any) {
+    try {
+        const url = `${HTTP_BACKEND}/chat/${chatId}`;
+        await axios.put(url, { message: JSON.stringify({ shape }) });
+        return true;
+    } catch (e: any) {
+        console.error("Failed to update shape:", chatId, e.response?.status, e.message);
+        return false;
+    }
+}

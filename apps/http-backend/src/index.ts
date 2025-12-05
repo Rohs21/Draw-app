@@ -179,6 +179,25 @@ app.delete("/chat/:chatId", async (req, res) => {
     }
 })
 
+app.put("/chat/:chatId", async (req, res) => {
+    try {
+        const chatId = Number(req.params.chatId);
+        const { message } = req.body;
+        await prismaClient.chat.update({
+            where: {
+                id: chatId
+            },
+            data: {
+                message: message
+            }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({ success: false, message: "Failed to update chat" });
+    }
+})
+
 
 app.delete("/room/:id", middleware, async (req, res) => {
   // Rename for clarity: The URL parameter is the slug now

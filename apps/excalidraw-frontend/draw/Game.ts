@@ -1,12 +1,23 @@
 import { Tool } from "@/components/Canvas";
-import { getExistingShapes, deleteShape } from "./http";
+import { getExistingShapes, deleteShape, updateShape } from "./http";
+
+export type ShapeStyle = {
+    strokeColor: string;
+    fillColor: string;
+    strokeWidth: number;
+    strokeStyle: "solid" | "dotted" | "dashed";
+}
 
 type ShapeData = {
     chatId?: number;
     shape: Shape;
 }
 
-type Shape = {
+type BaseShape = {
+    style?: ShapeStyle;
+}
+
+type Shape = ({
     type: "rect";
     x: number;
     y: number;
@@ -38,7 +49,7 @@ type Shape = {
     y1: number;
     x2: number;
     y2: number;
-}
+}) & BaseShape;
 
 export class Game {
 
@@ -55,6 +66,15 @@ export class Game {
 
     private selectedShape: ShapeData | null = null;
     private selectedShapeIndex: number = -1;
+    private isDragging: boolean = false;
+    private lastMouseX: number = 0;
+    private lastMouseY: number = 0;
+
+    // Style properties
+    private strokeColor: string = "#ffffff";
+    private fillColor: string = "transparent";
+    private strokeWidth: number = 2;
+    private strokeStyle: "solid" | "dotted" | "dashed" = "solid";
 
     socket: WebSocket;
 
@@ -78,6 +98,36 @@ export class Game {
 
     setTool(tool: Tool) {
         this.selectedTool = tool;
+        if (tool !== "select") {
+            this.selectedShape = null;
+            this.selectedShapeIndex = -1;
+            this.clearCanvas();
+        }
+    }
+
+    setStrokeColor(color: string) {
+        this.strokeColor = color;
+    }
+
+    setFillColor(color: string) {
+        this.fillColor = color;
+    }
+
+    setStrokeWidth(width: number) {
+        this.strokeWidth = width;
+    }
+
+    setStrokeStyle(style: "solid" | "dotted" | "dashed") {
+        this.strokeStyle = style;
+    }
+
+    getCurrentStyle(): ShapeStyle {
+        return {
+            strokeColor: this.strokeColor,
+            fillColor: this.fillColor,
+            strokeWidth: this.strokeWidth,
+            strokeStyle: this.strokeStyle
+        };
     }
 
     async init() {
@@ -97,6 +147,12 @@ export class Game {
                 if (parsed.deleteChatId) {
                     // Remove shape with this chatId
                     this.existingShapes = this.existingShapes.filter(s => s.chatId !== parsed.deleteChatId);
+                } else if (parsed.updateShape) {
+                    // Update shape position from another client
+                    const shapeData = this.existingShapes.find(s => s.chatId === parsed.updateShape.chatId);
+                    if (shapeData) {
+                        shapeData.shape = parsed.updateShape.shape;
+                    }
                 } else if (parsed.shape) {
                     this.existingShapes.push({ shape: parsed.shape, chatId: parsed.chatId });
                 }
@@ -181,18 +237,24 @@ export class Game {
             if (!shapeData || !shapeData.shape) return;
             const shape = shapeData.shape;
             
+            // Apply styles
+            this.applyShapeStyle(shape.style);
+            
             if (shape.type === "rect") {
-                this.ctx.strokeStyle = "rgba(255, 255, 255)"
+                if (shape.style?.fillColor && shape.style.fillColor !== "transparent") {
+                    this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                }
                 this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
             } else if (shape.type === "circle") {
-                this.ctx.strokeStyle = "rgba(255, 255, 255)"
                 this.ctx.beginPath();
                 this.ctx.arc(shape.centerX, shape.centerY, Math.abs(shape.radius), 0, Math.PI * 2);
+                if (shape.style?.fillColor && shape.style.fillColor !== "transparent") {
+                    this.ctx.fill();
+                }
                 this.ctx.stroke();
                 this.ctx.closePath();                
             } else if (shape.type === "pencil") {
                 if (shape.points && shape.points.length > 0) {
-                    this.ctx.strokeStyle = "rgba(255, 255, 255)"
                     this.ctx.beginPath();
                     this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
                     for (let i = 1; i < shape.points.length; i++) {
@@ -202,32 +264,55 @@ export class Game {
                     this.ctx.closePath();
                 }
             } else if (shape.type === "line") {
-                this.ctx.strokeStyle = "rgba(255, 255, 255)"
                 this.ctx.beginPath();
                 this.ctx.moveTo(shape.x1, shape.y1);
                 this.ctx.lineTo(shape.x2, shape.y2);
                 this.ctx.stroke();
                 this.ctx.closePath();
             } else if (shape.type === "diamond") {
-                this.drawDiamond(shape.x, shape.y, shape.width, shape.height);
+                this.drawDiamondWithStyle(shape.x, shape.y, shape.width, shape.height, shape.style);
             } else if (shape.type === "arrow") {
-                this.drawArrow(shape.x1, shape.y1, shape.x2, shape.y2);
+                this.drawArrowWithStyle(shape.x1, shape.y1, shape.x2, shape.y2, shape.style);
             }
+            
+            // Reset line dash
+            this.ctx.setLineDash([]);
         })
     }
 
-    private drawArrow(fromX: number, fromY: number, toX: number, toY: number) {
+    private applyShapeStyle(style?: ShapeStyle) {
+        if (style) {
+            this.ctx.strokeStyle = style.strokeColor || "#ffffff";
+            this.ctx.fillStyle = style.fillColor || "transparent";
+            this.ctx.lineWidth = style.strokeWidth || 2;
+            
+            if (style.strokeStyle === "dotted") {
+                this.ctx.setLineDash([2, 4]);
+            } else if (style.strokeStyle === "dashed") {
+                this.ctx.setLineDash([8, 4]);
+            } else {
+                this.ctx.setLineDash([]);
+            }
+        } else {
+            this.ctx.strokeStyle = "#ffffff";
+            this.ctx.fillStyle = "transparent";
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([]);
+        }
+    }
+
+    private drawArrowWithStyle(fromX: number, fromY: number, toX: number, toY: number, style?: ShapeStyle) {
         const headlen = 15;
         const angle = Math.atan2(toY - fromY, toX - fromX);
 
-        this.ctx.strokeStyle = "rgba(255, 255, 255)"
-        this.ctx.fillStyle = "rgba(255, 255, 255)"
+        this.applyShapeStyle(style);
 
         this.ctx.beginPath();
         this.ctx.moveTo(fromX, fromY);
         this.ctx.lineTo(toX, toY);
         this.ctx.stroke();
 
+        this.ctx.setLineDash([]);
         this.ctx.beginPath();
         this.ctx.moveTo(toX, toY);
         this.ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
@@ -236,25 +321,62 @@ export class Game {
         this.ctx.fill();
     }
 
+    private drawDiamondWithStyle(x: number, y: number, width: number, height: number, style?: ShapeStyle) {
+        const points = [
+            { x: x + width / 2, y },
+            { x: x + width, y: y + height / 2 },
+            { x: x + width / 2, y: y + height },
+            { x, y: y + height / 2 }
+        ];
+
+        this.applyShapeStyle(style);
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            this.ctx.lineTo(points[i].x, points[i].y);
+        }
+        this.ctx.closePath();
+        
+        if (style?.fillColor && style.fillColor !== "transparent") {
+            this.ctx.fill();
+        }
+        this.ctx.stroke();
+    }
+
     mouseDownHandler = (e: MouseEvent) => {
         this.clicked = true
         this.startX = e.clientX
         this.startY = e.clientY
         
         if (this.selectedTool === "select") {
-            // Check if clicking on an existing shape
+            // Check if clicking on the already selected shape to drag it
+            if (this.selectedShape && this.selectedShape.shape && 
+                this.isPointInShape(this.selectedShape.shape, this.startX, this.startY)) {
+                this.isDragging = true;
+                this.lastMouseX = this.startX;
+                this.lastMouseY = this.startY;
+                return;
+            }
+            
+            // Check if clicking on an existing shape to select it
             for (let i = this.existingShapes.length - 1; i >= 0; i--) {
                 const shapeData = this.existingShapes[i];
                 if (shapeData && shapeData.shape && this.isPointInShape(shapeData.shape, this.startX, this.startY)) {
                     this.selectedShape = shapeData;
                     this.selectedShapeIndex = i;
+                    this.isDragging = true;
+                    this.lastMouseX = this.startX;
+                    this.lastMouseY = this.startY;
                     this.clearCanvas();
                     this.drawSelectionBox(shapeData.shape);
                     return;
                 }
             }
+            // Clicked on empty area - deselect
             this.selectedShape = null;
             this.selectedShapeIndex = -1;
+            this.isDragging = false;
             this.clearCanvas();
             return;
         }
@@ -274,40 +396,76 @@ export class Game {
         const selectedTool = this.selectedTool;
         let shape: Shape | null = null;
 
+        if (selectedTool === "select") {
+            // Save the moved shape to database
+            if (this.isDragging && this.selectedShape && this.selectedShape.chatId) {
+                updateShape(this.selectedShape.chatId, this.selectedShape.shape);
+                
+                // Notify other clients about the move
+                this.socket.send(JSON.stringify({
+                    type: "chat",
+                    message: JSON.stringify({
+                        updateShape: {
+                            chatId: this.selectedShape.chatId,
+                            shape: this.selectedShape.shape
+                        }
+                    }),
+                    roomId: this.roomId
+                }));
+            }
+            this.isDragging = false;
+            return;
+        }
+
         if (selectedTool === "eraser") {
             this.eraserPoints = [];
             return;
         }
 
         if (selectedTool === "rect") {
+            const minX = Math.min(this.startX, e.clientX);
+            const minY = Math.min(this.startY, e.clientY);
             shape = {
                 type: "rect",
-                x: this.startX,
-                y: this.startY,
-                height,
-                width
+                x: minX,
+                y: minY,
+                height: Math.abs(height),
+                width: Math.abs(width),
+                style: this.getCurrentStyle()
             }
         } else if (selectedTool === "circle") {
-            const radius = Math.max(width, height) / 2;
+            // Calculate proper center and radius based on bounding box
+            const minX = Math.min(this.startX, e.clientX);
+            const minY = Math.min(this.startY, e.clientY);
+            const boxWidth = Math.abs(width);
+            const boxHeight = Math.abs(height);
+            const radius = Math.max(boxWidth, boxHeight) / 2;
+            const centerX = minX + boxWidth / 2;
+            const centerY = minY + boxHeight / 2;
             shape = {
                 type: "circle",
                 radius: radius,
-                centerX: this.startX + radius,
-                centerY: this.startY + radius,
+                centerX: centerX,
+                centerY: centerY,
+                style: this.getCurrentStyle()
             }
         } else if (selectedTool === "diamond") {
+            const minX = Math.min(this.startX, e.clientX);
+            const minY = Math.min(this.startY, e.clientY);
             shape = {
                 type: "diamond",
-                x: this.startX,
-                y: this.startY,
-                width,
-                height
+                x: minX,
+                y: minY,
+                width: Math.abs(width),
+                height: Math.abs(height),
+                style: this.getCurrentStyle()
             }
         } else if (selectedTool === "pencil") {
             if (this.pencilPoints.length > 1) {
                 shape = {
                     type: "pencil",
-                    points: this.pencilPoints
+                    points: this.pencilPoints,
+                    style: this.getCurrentStyle()
                 }
             }
             this.pencilPoints = [];
@@ -317,7 +475,8 @@ export class Game {
                 x1: this.startX,
                 y1: this.startY,
                 x2: e.clientX,
-                y2: e.clientY
+                y2: e.clientY,
+                style: this.getCurrentStyle()
             }
         } else if (selectedTool === "arrow") {
             shape = {
@@ -325,7 +484,8 @@ export class Game {
                 x1: this.startX,
                 y1: this.startY,
                 x2: e.clientX,
-                y2: e.clientY
+                y2: e.clientY,
+                style: this.getCurrentStyle()
             }
         }
 
@@ -348,30 +508,84 @@ export class Game {
         if (this.clicked) {
             const height = e.clientY - this.startY;
             const width = e.clientX - this.startX;
-            this.clearCanvas();
-            this.ctx.strokeStyle = "rgba(255, 255, 255)"
             const selectedTool = this.selectedTool;
 
+            // Handle dragging selected shape
+            if (selectedTool === "select" && this.isDragging && this.selectedShape && this.selectedShape.shape) {
+                const deltaX = e.clientX - this.lastMouseX;
+                const deltaY = e.clientY - this.lastMouseY;
+                this.moveShape(this.selectedShape.shape, deltaX, deltaY);
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                this.clearCanvas();
+                this.drawSelectionBox(this.selectedShape.shape);
+                return;
+            }
+
+            this.clearCanvas();
+            
+            // Apply current style for preview
+            this.ctx.strokeStyle = this.strokeColor;
+            this.ctx.fillStyle = this.fillColor;
+            this.ctx.lineWidth = this.strokeWidth;
+            if (this.strokeStyle === "dotted") {
+                this.ctx.setLineDash([2, 4]);
+            } else if (this.strokeStyle === "dashed") {
+                this.ctx.setLineDash([8, 4]);
+            } else {
+                this.ctx.setLineDash([]);
+            }
+
             if (selectedTool === "rect") {
-                this.ctx.strokeRect(this.startX, this.startY, width, height);   
+                const currentX = e.clientX;
+                const currentY = e.clientY;
+                const minX = Math.min(this.startX, currentX);
+                const minY = Math.min(this.startY, currentY);
+                const rectWidth = Math.abs(width);
+                const rectHeight = Math.abs(height);
+                if (this.fillColor !== "transparent") {
+                    this.ctx.fillRect(minX, minY, rectWidth, rectHeight);
+                }
+                this.ctx.strokeRect(minX, minY, rectWidth, rectHeight);   
             } else if (selectedTool === "circle") {
-                const radius = Math.max(width, height) / 2;
-                const centerX = this.startX + radius;
-                const centerY = this.startY + radius;
+                // Calculate proper center and radius based on actual mouse position
+                const currentX = e.clientX;
+                const currentY = e.clientY;
+                const minX = Math.min(this.startX, currentX);
+                const minY = Math.min(this.startY, currentY);
+                const maxX = Math.max(this.startX, currentX);
+                const maxY = Math.max(this.startY, currentY);
+                const boxWidth = maxX - minX;
+                const boxHeight = maxY - minY;
+                const radius = Math.max(boxWidth, boxHeight) / 2;
+                const centerX = minX + boxWidth / 2;
+                const centerY = minY + boxHeight / 2;
                 this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, Math.abs(radius), 0, Math.PI * 2);
+                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                if (this.fillColor !== "transparent") {
+                    this.ctx.fill();
+                }
                 this.ctx.stroke();
                 this.ctx.closePath();                
             } else if (selectedTool === "diamond") {
-                this.drawDiamond(this.startX, this.startY, width, height);
+                const currentX = e.clientX;
+                const currentY = e.clientY;
+                const minX = Math.min(this.startX, currentX);
+                const minY = Math.min(this.startY, currentY);
+                const diamondWidth = Math.abs(width);
+                const diamondHeight = Math.abs(height);
+                this.drawDiamondPreview(minX, minY, diamondWidth, diamondHeight);
             } else if (selectedTool === "pencil") {
                 const currentPoint = {x: e.clientX, y: e.clientY};
                 this.pencilPoints.push(currentPoint);
                 
+                // Draw the entire pencil path
                 if (this.pencilPoints.length > 1) {
                     this.ctx.beginPath();
-                    this.ctx.moveTo(this.pencilPoints[this.pencilPoints.length - 2].x, this.pencilPoints[this.pencilPoints.length - 2].y);
-                    this.ctx.lineTo(currentPoint.x, currentPoint.y);
+                    this.ctx.moveTo(this.pencilPoints[0].x, this.pencilPoints[0].y);
+                    for (let i = 1; i < this.pencilPoints.length; i++) {
+                        this.ctx.lineTo(this.pencilPoints[i].x, this.pencilPoints[i].y);
+                    }
                     this.ctx.stroke();
                     this.ctx.closePath();
                 }
@@ -424,15 +638,64 @@ export class Game {
                 this.ctx.stroke();
                 this.ctx.closePath();
             } else if (selectedTool === "arrow") {
-                this.drawArrow(this.startX, this.startY, e.clientX, e.clientY);
+                this.drawArrowPreview(this.startX, this.startY, e.clientX, e.clientY);
             }
         }
+    }
+
+    private drawArrowPreview(fromX: number, fromY: number, toX: number, toY: number) {
+        const headlen = 15;
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+
+        this.ctx.strokeStyle = this.strokeColor;
+        this.ctx.fillStyle = this.strokeColor;
+        this.ctx.lineWidth = this.strokeWidth;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromX, fromY);
+        this.ctx.lineTo(toX, toY);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(toX, toY);
+        this.ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+        this.ctx.closePath();
+        this.ctx.fill();
     }
 
     initMouseHandlers() {
         this.canvas.addEventListener("mousedown", this.mouseDownHandler)
         this.canvas.addEventListener("mouseup", this.mouseUpHandler)
         this.canvas.addEventListener("mousemove", this.mouseMoveHandler)    
+    }
+
+    private moveShape(shape: Shape, deltaX: number, deltaY: number) {
+        if (shape.type === "rect") {
+            shape.x += deltaX;
+            shape.y += deltaY;
+        } else if (shape.type === "diamond") {
+            shape.x += deltaX;
+            shape.y += deltaY;
+        } else if (shape.type === "circle") {
+            shape.centerX += deltaX;
+            shape.centerY += deltaY;
+        } else if (shape.type === "pencil" && shape.points) {
+            shape.points = shape.points.map(p => ({
+                x: p.x + deltaX,
+                y: p.y + deltaY
+            }));
+        } else if (shape.type === "line") {
+            shape.x1 += deltaX;
+            shape.y1 += deltaY;
+            shape.x2 += deltaX;
+            shape.y2 += deltaY;
+        } else if (shape.type === "arrow") {
+            shape.x1 += deltaX;
+            shape.y1 += deltaY;
+            shape.x2 += deltaX;
+            shape.y2 += deltaY;
+        }
     }
 
     private drawDiamond(x: number, y: number, width: number, height: number) {
@@ -450,6 +713,27 @@ export class Game {
             this.ctx.lineTo(points[i].x, points[i].y);
         }
         this.ctx.closePath();
+        this.ctx.stroke();
+    }
+
+    private drawDiamondPreview(x: number, y: number, width: number, height: number) {
+        const points = [
+            { x: x + width / 2, y },
+            { x: x + width, y: y + height / 2 },
+            { x: x + width / 2, y: y + height },
+            { x, y: y + height / 2 }
+        ];
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            this.ctx.lineTo(points[i].x, points[i].y);
+        }
+        this.ctx.closePath();
+        
+        if (this.fillColor !== "transparent") {
+            this.ctx.fill();
+        }
         this.ctx.stroke();
     }
 
