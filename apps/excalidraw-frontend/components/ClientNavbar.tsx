@@ -7,7 +7,7 @@ export default function ClientNavbar() {
   const pathname = usePathname();
 
   // hide navbar on these pages
-  const hideNavbar = pathname === "/signin" || pathname === "/signup" || pathname.startsWith("/canvas/");
+  const hideNavbar = pathname === "/signin" || pathname === "/signup" ||pathname === "/dashboard" || pathname.startsWith("/canvas/");
 
   if (hideNavbar) return null;
 

@@ -5,10 +5,25 @@ export async function getExistingShapes(roomId: string) {
     const res = await axios.get(`${HTTP_BACKEND}/chats/${roomId}`);
     const messages = res.data.messages;
 
-    const shapes = messages.map((x: {message: string}) => {
+    const shapes = messages.map((x: {id: number, message: string}) => {
         const messageData = JSON.parse(x.message)
-        return messageData.shape;
+        return {
+            shape: messageData.shape,
+            chatId: x.id
+        };
     })
 
     return shapes;
+}
+
+export async function deleteShape(chatId: number) {
+    try {
+        const url = `${HTTP_BACKEND}/chat/${chatId}`;
+        console.log("Deleting shape with chatId:", chatId, "URL:", url);
+        await axios.delete(url);
+        return true;
+    } catch (e: any) {
+        console.error("Failed to delete shape:", chatId, e.response?.status, e.message);
+        return false;
+    }
 }

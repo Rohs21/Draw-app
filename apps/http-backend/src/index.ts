@@ -164,6 +164,21 @@ app.get("/room/:slug", async (req, res) => {
     })
 })
 
+app.delete("/chat/:chatId", async (req, res) => {
+    try {
+        const chatId = Number(req.params.chatId);
+        await prismaClient.chat.delete({
+            where: {
+                id: chatId
+            }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({ success: false, message: "Failed to delete chat" });
+    }
+})
+
 
 app.delete("/room/:id", middleware, async (req, res) => {
   // Rename for clarity: The URL parameter is the slug now
