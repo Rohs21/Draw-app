@@ -66,7 +66,9 @@ export function Canvas({
     }}>
         <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight} style={{
             display: "block",
-            flex: 1
+            flex: 1,
+            cursor: selectedTool === "eraser" ? "none" : 
+                   selectedTool === "select" ? "default" : "crosshair"
         }}></canvas>
         <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
         <StylePanel 

@@ -505,6 +505,13 @@ export class Game {
     }
 
     mouseMoveHandler = (e: MouseEvent) => {
+        // Show eraser cursor when hovering (even when not clicking)
+        if (this.selectedTool === "eraser" && !this.clicked) {
+            this.clearCanvas();
+            this.drawEraserCursor(e.clientX, e.clientY);
+            return;
+        }
+
         if (this.clicked) {
             const height = e.clientY - this.startY;
             const width = e.clientX - this.startX;
@@ -524,16 +531,18 @@ export class Game {
 
             this.clearCanvas();
             
-            // Apply current style for preview
-            this.ctx.strokeStyle = this.strokeColor;
-            this.ctx.fillStyle = this.fillColor;
-            this.ctx.lineWidth = this.strokeWidth;
-            if (this.strokeStyle === "dotted") {
-                this.ctx.setLineDash([2, 4]);
-            } else if (this.strokeStyle === "dashed") {
-                this.ctx.setLineDash([8, 4]);
-            } else {
-                this.ctx.setLineDash([]);
+            // Apply current style for preview (not for eraser)
+            if (selectedTool !== "eraser") {
+                this.ctx.strokeStyle = this.strokeColor;
+                this.ctx.fillStyle = this.fillColor;
+                this.ctx.lineWidth = this.strokeWidth;
+                if (this.strokeStyle === "dotted") {
+                    this.ctx.setLineDash([2, 4]);
+                } else if (this.strokeStyle === "dashed") {
+                    this.ctx.setLineDash([8, 4]);
+                } else {
+                    this.ctx.setLineDash([]);
+                }
             }
 
             if (selectedTool === "rect") {
@@ -626,11 +635,7 @@ export class Game {
                 }
                 
                 // Draw eraser cursor
-                this.ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
-                this.ctx.beginPath();
-                this.ctx.arc(currentPoint.x, currentPoint.y, 15, 0, Math.PI * 2);
-                this.ctx.stroke();
-                this.ctx.closePath();
+                this.drawEraserCursor(currentPoint.x, currentPoint.y);
             } else if (selectedTool === "line") {
                 this.ctx.beginPath();
                 this.ctx.moveTo(this.startX, this.startY);
@@ -696,6 +701,20 @@ export class Game {
             shape.x2 += deltaX;
             shape.y2 += deltaY;
         }
+    }
+
+    private drawEraserCursor(x: number, y: number) {
+        this.ctx.save();
+        this.ctx.strokeStyle = "rgba(220, 50, 50, 0.9)";
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([]);
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.fillStyle = "rgba(180, 180, 180, 0.3)";
+        this.ctx.fill();
+        this.ctx.closePath();
+        this.ctx.restore();
     }
 
     private drawDiamond(x: number, y: number, width: number, height: number) {
