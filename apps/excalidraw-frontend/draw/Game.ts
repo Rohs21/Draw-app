@@ -33,7 +33,8 @@ type Shape = ({
     type: "circle";
     centerX: number;
     centerY: number;
-    radius: number;
+    radiusX: number;
+    radiusY: number;
 } | {
     type: "pencil";
     points: Array<{x: number, y: number}>;
@@ -63,6 +64,8 @@ export class Game {
     private selectedTool: Tool = "circle";
     private pencilPoints: Array<{x: number, y: number}> = [];
     private eraserPoints: Array<{x: number, y: number}> = [];
+    private laserPoints: Array<{x: number, y: number, timestamp: number}> = [];
+    private laserAnimationId: number | null = null;
 
     private selectedShape: ShapeData | null = null;
     private selectedShapeIndex: number = -1;
@@ -94,6 +97,9 @@ export class Game {
         this.canvas.removeEventListener("mousedown", this.mouseDownHandler)
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler)
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler)
+        if (this.laserAnimationId) {
+            cancelAnimationFrame(this.laserAnimationId);
+        }
     }
 
     setTool(tool: Tool) {
@@ -178,10 +184,12 @@ export class Game {
                    y >= shape.y - threshold && 
                    y <= shape.y + shape.height + threshold;
         } else if (shape.type === "circle") {
+            // Ellipse hit detection: (x-cx)²/rx² + (y-cy)²/ry² <= 1
             const dx = x - shape.centerX;
             const dy = y - shape.centerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance <= Math.abs(shape.radius) + threshold;
+            const rx = Math.abs(shape.radiusX) + threshold;
+            const ry = Math.abs(shape.radiusY) + threshold;
+            return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1;
         } else if (shape.type === "pencil") {
             return shape.points?.some(p => {
                 const dx = x - p.x;
@@ -247,7 +255,7 @@ export class Game {
                 this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
             } else if (shape.type === "circle") {
                 this.ctx.beginPath();
-                this.ctx.arc(shape.centerX, shape.centerY, Math.abs(shape.radius), 0, Math.PI * 2);
+                this.ctx.ellipse(shape.centerX, shape.centerY, Math.abs(shape.radiusX), Math.abs(shape.radiusY), 0, 0, Math.PI * 2);
                 if (shape.style?.fillColor && shape.style.fillColor !== "transparent") {
                     this.ctx.fill();
                 }
@@ -422,6 +430,12 @@ export class Game {
             return;
         }
 
+        if (selectedTool === "laser") {
+            // Laser doesn't save shapes, just clear points and let animation fade
+            this.laserPoints = [];
+            return;
+        }
+
         if (selectedTool === "rect") {
             const minX = Math.min(this.startX, e.clientX);
             const minY = Math.min(this.startY, e.clientY);
@@ -434,17 +448,19 @@ export class Game {
                 style: this.getCurrentStyle()
             }
         } else if (selectedTool === "circle") {
-            // Calculate proper center and radius based on bounding box
+            // Calculate proper center and radii based on bounding box
             const minX = Math.min(this.startX, e.clientX);
             const minY = Math.min(this.startY, e.clientY);
             const boxWidth = Math.abs(width);
             const boxHeight = Math.abs(height);
-            const radius = Math.max(boxWidth, boxHeight) / 2;
-            const centerX = minX + boxWidth / 2;
-            const centerY = minY + boxHeight / 2;
+            const radiusX = boxWidth / 2;
+            const radiusY = boxHeight / 2;
+            const centerX = minX + radiusX;
+            const centerY = minY + radiusY;
             shape = {
                 type: "circle",
-                radius: radius,
+                radiusX: radiusX,
+                radiusY: radiusY,
                 centerX: centerX,
                 centerY: centerY,
                 style: this.getCurrentStyle()
@@ -512,6 +528,13 @@ export class Game {
             return;
         }
 
+        // Show laser cursor when hovering (even when not clicking)
+        if (this.selectedTool === "laser" && !this.clicked) {
+            this.clearCanvas();
+            this.drawLaserCursor(e.clientX, e.clientY);
+            return;
+        }
+
         if (this.clicked) {
             const height = e.clientY - this.startY;
             const width = e.clientX - this.startX;
@@ -557,20 +580,19 @@ export class Game {
                 }
                 this.ctx.strokeRect(minX, minY, rectWidth, rectHeight);   
             } else if (selectedTool === "circle") {
-                // Calculate proper center and radius based on actual mouse position
+                // Calculate proper center and radii based on actual mouse position
                 const currentX = e.clientX;
                 const currentY = e.clientY;
                 const minX = Math.min(this.startX, currentX);
                 const minY = Math.min(this.startY, currentY);
-                const maxX = Math.max(this.startX, currentX);
-                const maxY = Math.max(this.startY, currentY);
-                const boxWidth = maxX - minX;
-                const boxHeight = maxY - minY;
-                const radius = Math.max(boxWidth, boxHeight) / 2;
-                const centerX = minX + boxWidth / 2;
-                const centerY = minY + boxHeight / 2;
+                const boxWidth = Math.abs(currentX - this.startX);
+                const boxHeight = Math.abs(currentY - this.startY);
+                const radiusX = boxWidth / 2;
+                const radiusY = boxHeight / 2;
+                const centerX = minX + radiusX;
+                const centerY = minY + radiusY;
                 this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                this.ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
                 if (this.fillColor !== "transparent") {
                     this.ctx.fill();
                 }
@@ -644,7 +666,62 @@ export class Game {
                 this.ctx.closePath();
             } else if (selectedTool === "arrow") {
                 this.drawArrowPreview(this.startX, this.startY, e.clientX, e.clientY);
+            } else if (selectedTool === "laser") {
+                const currentPoint = {x: e.clientX, y: e.clientY, timestamp: Date.now()};
+                this.laserPoints.push(currentPoint);
+                this.drawLaser();
             }
+        }
+    }
+
+    private drawLaser() {
+        // Remove points older than 1 second
+        const now = Date.now();
+        const fadeTime = 1000; // 1 second fade
+        this.laserPoints = this.laserPoints.filter(p => now - p.timestamp < fadeTime);
+        
+        this.clearCanvas();
+        
+        if (this.laserPoints.length > 1) {
+            for (let i = 1; i < this.laserPoints.length; i++) {
+                const point = this.laserPoints[i];
+                const prevPoint = this.laserPoints[i - 1];
+                const age = now - point.timestamp;
+                const opacity = 1 - (age / fadeTime);
+                
+                this.ctx.save();
+                this.ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = "round";
+                this.ctx.lineJoin = "round";
+                this.ctx.shadowColor = "rgba(255, 0, 0, 0.8)";
+                this.ctx.shadowBlur = 10;
+                this.ctx.beginPath();
+                this.ctx.moveTo(prevPoint.x, prevPoint.y);
+                this.ctx.lineTo(point.x, point.y);
+                this.ctx.stroke();
+                this.ctx.closePath();
+                this.ctx.restore();
+            }
+        }
+        
+        // Draw laser pointer dot at current position
+        if (this.laserPoints.length > 0) {
+            const lastPoint = this.laserPoints[this.laserPoints.length - 1];
+            this.ctx.save();
+            this.ctx.fillStyle = "rgba(255, 0, 0, 1)";
+            this.ctx.shadowColor = "rgba(255, 0, 0, 1)";
+            this.ctx.shadowBlur = 15;
+            this.ctx.beginPath();
+            this.ctx.arc(lastPoint.x, lastPoint.y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.closePath();
+            this.ctx.restore();
+        }
+        
+        // Continue animation if there are still points
+        if (this.laserPoints.length > 0) {
+            this.laserAnimationId = requestAnimationFrame(() => this.drawLaser());
         }
     }
 
@@ -712,6 +789,18 @@ export class Game {
         this.ctx.arc(x, y, 10, 0, Math.PI * 2);
         this.ctx.stroke();
         this.ctx.fillStyle = "rgba(180, 180, 180, 0.3)";
+        this.ctx.fill();
+        this.ctx.closePath();
+        this.ctx.restore();
+    }
+
+    private drawLaserCursor(x: number, y: number) {
+        this.ctx.save();
+        this.ctx.fillStyle = "rgba(255, 0, 0, 1)";
+        this.ctx.shadowColor = "rgba(255, 0, 0, 1)";
+        this.ctx.shadowBlur = 15;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 5, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.closePath();
         this.ctx.restore();
@@ -804,10 +893,10 @@ export class Game {
             };
         } else if (shape.type === "circle") {
             return {
-                minX: shape.centerX - Math.abs(shape.radius),
-                minY: shape.centerY - Math.abs(shape.radius),
-                maxX: shape.centerX + Math.abs(shape.radius),
-                maxY: shape.centerY + Math.abs(shape.radius)
+                minX: shape.centerX - Math.abs(shape.radiusX),
+                minY: shape.centerY - Math.abs(shape.radiusY),
+                maxX: shape.centerX + Math.abs(shape.radiusX),
+                maxY: shape.centerY + Math.abs(shape.radiusY)
             };
         } else if (shape.type === "pencil") {
             if (!shape.points || shape.points.length === 0) return null;

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, DoorOpen, Crosshair } from "lucide-react";
 import { Game, ShapeStyle } from "@/draw/Game";
 
-export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow";
+export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser";
 
 const STROKE_COLORS = ["#e03131", "#2f9e44", "#1971c2", "#f08c00", "#ffffff", "#868e96"];
 const FILL_COLORS = ["#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99", "transparent", "#e9ecef"];
@@ -68,6 +69,7 @@ export function Canvas({
             display: "block",
             flex: 1,
             cursor: selectedTool === "eraser" ? "none" : 
+                   selectedTool === "laser" ? "none" :
                    selectedTool === "select" ? "default" : "crosshair"
         }}></canvas>
         <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
@@ -146,6 +148,12 @@ function Topbar({selectedTool, setSelectedTool}: {
                 icon={<Pencil size={18} />}
                 label="7"
             />
+            <ToolButton 
+                onClick={() => setSelectedTool("laser")}
+                activated={selectedTool === "laser"}
+                icon={<Crosshair size={18} />}
+                label="8"
+            />
             
             <div style={{
                 width: "1px",
@@ -160,6 +168,15 @@ function Topbar({selectedTool, setSelectedTool}: {
                 icon={<Eraser size={18} />}
                 label="9"
             />
+            
+            <div style={{
+                width: "1px",
+                height: "28px",
+                backgroundColor: "rgba(100, 100, 100, 0.4)",
+                margin: "0 6px"
+            }} />
+            
+            <ExitButton />
         </div>
 }
 
@@ -213,6 +230,40 @@ function ToolButton({icon, onClick, activated, label}: {
         }}>
             {label}
         </span>
+    </button>
+}
+
+function ExitButton() {
+    const router = useRouter();
+    
+    return <button
+        onClick={() => router.push("/dashboard")}
+        style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            border: "none",
+            backgroundColor: "transparent",
+            color: "rgba(200, 200, 200, 1)",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+            margin: "0",
+            padding: "0"
+        }}
+        onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(180, 60, 60, 0.9)";
+            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+        }}
+        onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
+            (e.currentTarget as HTMLButtonElement).style.color = "rgba(200, 200, 200, 1)";
+        }}
+        title="Exit to Dashboard"
+    >
+        <DoorOpen size={18} />
     </button>
 }
 
