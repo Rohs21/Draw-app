@@ -314,19 +314,22 @@ export class Game {
         const angle = Math.atan2(toY - fromY, toX - fromX);
 
         this.applyShapeStyle(style);
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
 
+        // Draw the main line
         this.ctx.beginPath();
         this.ctx.moveTo(fromX, fromY);
         this.ctx.lineTo(toX, toY);
         this.ctx.stroke();
 
+        // Draw the arrowhead as two lines (open arrow like ->)
         this.ctx.setLineDash([]);
         this.ctx.beginPath();
-        this.ctx.moveTo(toX, toY);
-        this.ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.moveTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.lineTo(toX, toY);
         this.ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
-        this.ctx.closePath();
-        this.ctx.fill();
+        this.ctx.stroke();
     }
 
     private drawDiamondWithStyle(x: number, y: number, width: number, height: number, style?: ShapeStyle) {
@@ -730,20 +733,23 @@ export class Game {
         const angle = Math.atan2(toY - fromY, toX - fromX);
 
         this.ctx.strokeStyle = this.strokeColor;
-        this.ctx.fillStyle = this.strokeColor;
         this.ctx.lineWidth = this.strokeWidth;
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
 
+        // Draw the main line
         this.ctx.beginPath();
         this.ctx.moveTo(fromX, fromY);
         this.ctx.lineTo(toX, toY);
         this.ctx.stroke();
 
+        // Draw the arrowhead as two lines (open arrow like ->)
+        this.ctx.setLineDash([]);
         this.ctx.beginPath();
-        this.ctx.moveTo(toX, toY);
-        this.ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.moveTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.lineTo(toX, toY);
         this.ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
-        this.ctx.closePath();
-        this.ctx.fill();
+        this.ctx.stroke();
     }
 
     initMouseHandlers() {

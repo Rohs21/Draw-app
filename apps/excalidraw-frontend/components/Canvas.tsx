@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, DoorOpen, Crosshair } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, LogOut, Crosshair } from "lucide-react";
 import { Game, ShapeStyle } from "@/draw/Game";
 
 export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser";
@@ -43,6 +43,49 @@ export function Canvas({
     useEffect(() => {
         game?.setStrokeStyle(strokeStyle);
     }, [strokeStyle, game]);
+
+    // Keyboard shortcuts for tools
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't trigger if user is typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+            
+            switch (e.key) {
+                case "1":
+                    setSelectedTool("select");
+                    break;
+                case "2":
+                    setSelectedTool("rect");
+                    break;
+                case "3":
+                    setSelectedTool("circle");
+                    break;
+                case "4":
+                    setSelectedTool("diamond");
+                    break;
+                case "5":
+                    setSelectedTool("arrow");
+                    break;
+                case "6":
+                    setSelectedTool("line");
+                    break;
+                case "7":
+                    setSelectedTool("pencil");
+                    break;
+                case "8":
+                    setSelectedTool("laser");
+                    break;
+                case "9":
+                    setSelectedTool("eraser");
+                    break;
+            }
+        };
+        
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     useEffect(() => {
 
@@ -111,48 +154,56 @@ function Topbar({selectedTool, setSelectedTool}: {
                 activated={selectedTool === "select"}
                 icon={<Pointer size={18} />}
                 label="1"
+                tooltip="Select — 1"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("rect")}
                 activated={selectedTool === "rect"}
                 icon={<RectangleHorizontalIcon size={18} />}
                 label="2"
+                tooltip="Rectangle — 2"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("circle")}
                 activated={selectedTool === "circle"}
                 icon={<Circle size={18} />}
                 label="3"
+                tooltip="Ellipse — 3"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("diamond")}
                 activated={selectedTool === "diamond"}
                 icon={<Diamond size={18} />}
                 label="4"
+                tooltip="Diamond — 4"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("arrow")}
                 activated={selectedTool === "arrow"}
                 icon={<ArrowRight size={18} />}
                 label="5"
+                tooltip="Arrow — 5"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("line")}
                 activated={selectedTool === "line"}
                 icon={<Minus size={18} />}
                 label="6"
+                tooltip="Line — 6"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("pencil")}
                 activated={selectedTool === "pencil"}
                 icon={<Pencil size={18} />}
                 label="7"
+                tooltip="Pencil — 7"
             />
             <ToolButton 
                 onClick={() => setSelectedTool("laser")}
                 activated={selectedTool === "laser"}
                 icon={<Crosshair size={18} />}
                 label="8"
+                tooltip="Laser — 8"
             />
             
             <div style={{
@@ -167,6 +218,7 @@ function Topbar({selectedTool, setSelectedTool}: {
                 activated={selectedTool === "eraser"}
                 icon={<Eraser size={18} />}
                 label="9"
+                tooltip="Eraser — 9"
             />
             
             <div style={{
@@ -180,14 +232,16 @@ function Topbar({selectedTool, setSelectedTool}: {
         </div>
 }
 
-function ToolButton({icon, onClick, activated, label}: {
+function ToolButton({icon, onClick, activated, label, tooltip}: {
     icon: React.ReactNode,
     onClick: () => void,
     activated: boolean,
-    label: string
+    label: string,
+    tooltip?: string
 }) {
     return <button
         onClick={onClick}
+        title={tooltip}
         style={{
             position: "relative",
             display: "flex",
@@ -238,6 +292,7 @@ function ExitButton() {
     
     return <button
         onClick={() => router.push("/dashboard")}
+        title="Back to Dashboard"
         style={{
             display: "flex",
             alignItems: "center",
@@ -254,16 +309,15 @@ function ExitButton() {
             padding: "0"
         }}
         onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(180, 60, 60, 0.9)";
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(70, 70, 70, 0.9)";
             (e.currentTarget as HTMLButtonElement).style.color = "#fff";
         }}
         onMouseLeave={(e) => {
             (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
             (e.currentTarget as HTMLButtonElement).style.color = "rgba(200, 200, 200, 1)";
         }}
-        title="Exit to Dashboard"
     >
-        <DoorOpen size={18} />
+        <LogOut size={18} />
     </button>
 }
 
