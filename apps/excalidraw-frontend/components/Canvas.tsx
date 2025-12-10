@@ -23,6 +23,7 @@ export function Canvas({
     const [fillColor, setFillColor] = useState("transparent");
     const [strokeWidth, setStrokeWidth] = useState(2);
     const [strokeStyle, setStrokeStyle] = useState<"solid" | "dotted" | "dashed">("solid");
+    const [isDrawing, setIsDrawing] = useState(false);
 
     useEffect(() => {
         game?.setTool(selectedTool);
@@ -108,14 +109,22 @@ export function Canvas({
         flexDirection: "column",
         backgroundColor: "#000"
     }}>
-        <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight} style={{
-            display: "block",
-            flex: 1,
-            cursor: selectedTool === "eraser" ? "none" : 
-                   selectedTool === "laser" ? "none" :
-                   selectedTool === "select" ? "default" : "crosshair"
-        }}></canvas>
-        <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
+        <canvas 
+            ref={canvasRef} 
+            width={window.innerWidth} 
+            height={window.innerHeight} 
+            style={{
+                display: "block",
+                flex: 1,
+                cursor: selectedTool === "eraser" ? "none" : 
+                       selectedTool === "laser" ? "none" :
+                       selectedTool === "select" ? "default" : "crosshair"
+            }}
+            onMouseDown={() => setIsDrawing(true)}
+            onMouseUp={() => setIsDrawing(false)}
+            onMouseLeave={() => setIsDrawing(false)}
+        ></canvas>
+        <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} isDrawing={isDrawing} />
         <StylePanel 
             strokeColor={strokeColor}
             setStrokeColor={setStrokeColor}
@@ -125,13 +134,15 @@ export function Canvas({
             setStrokeWidth={setStrokeWidth}
             strokeStyle={strokeStyle}
             setStrokeStyle={setStrokeStyle}
+            isDrawing={isDrawing}
         />
     </div>
 }
 
-function Topbar({selectedTool, setSelectedTool}: {
+function Topbar({selectedTool, setSelectedTool, isDrawing}: {
     selectedTool: Tool,
-    setSelectedTool: (s: Tool) => void
+    setSelectedTool: (s: Tool) => void,
+    isDrawing: boolean
 }) {
     return <div style={{
             position: "fixed",
@@ -147,7 +158,8 @@ function Topbar({selectedTool, setSelectedTool}: {
             gap: "1px",
             zIndex: 1000,
             boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(80, 80, 80, 0.4)"
+            border: "1px solid rgba(80, 80, 80, 0.4)",
+            pointerEvents: isDrawing ? "none" : "auto"
         }}>
             <ToolButton 
                 onClick={() => setSelectedTool("select")}
@@ -329,7 +341,8 @@ function StylePanel({
     strokeWidth,
     setStrokeWidth,
     strokeStyle,
-    setStrokeStyle
+    setStrokeStyle,
+    isDrawing
 }: {
     strokeColor: string;
     setStrokeColor: (color: string) => void;
@@ -339,6 +352,7 @@ function StylePanel({
     setStrokeWidth: (width: number) => void;
     strokeStyle: "solid" | "dotted" | "dashed";
     setStrokeStyle: (style: "solid" | "dotted" | "dashed") => void;
+    isDrawing: boolean;
 }) {
     return <div style={{
         position: "fixed",
@@ -348,6 +362,7 @@ function StylePanel({
         borderRadius: "12px",
         padding: "16px",
         zIndex: 1000,
+        pointerEvents: isDrawing ? "none" : "auto",
         boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
         border: "1px solid rgba(80, 80, 80, 0.4)",
         display: "flex",

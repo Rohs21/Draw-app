@@ -97,6 +97,7 @@ export class Game {
         this.canvas.removeEventListener("mousedown", this.mouseDownHandler)
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler)
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler)
+        this.canvas.removeEventListener("mouseleave", this.mouseLeaveHandler)
         if (this.laserAnimationId) {
             cancelAnimationFrame(this.laserAnimationId);
         }
@@ -755,7 +756,15 @@ export class Game {
     initMouseHandlers() {
         this.canvas.addEventListener("mousedown", this.mouseDownHandler)
         this.canvas.addEventListener("mouseup", this.mouseUpHandler)
-        this.canvas.addEventListener("mousemove", this.mouseMoveHandler)    
+        this.canvas.addEventListener("mousemove", this.mouseMoveHandler)
+        this.canvas.addEventListener("mouseleave", this.mouseLeaveHandler)
+    }
+
+    mouseLeaveHandler = () => {
+        // Clear the cursor when mouse leaves canvas
+        if ((this.selectedTool === "eraser" || this.selectedTool === "laser") && !this.clicked) {
+            this.clearCanvas();
+        }
     }
 
     private moveShape(shape: Shape, deltaX: number, deltaY: number) {
