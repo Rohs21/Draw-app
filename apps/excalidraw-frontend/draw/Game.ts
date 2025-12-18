@@ -10,6 +10,7 @@ export type ShapeStyle = {
 
 type ShapeData = {
     chatId?: number;
+    localId?: string;  // Unique ID for local tracking before chatId is assigned
     shape: Shape;
 }
 
@@ -91,6 +92,14 @@ export class Game {
     private textInputElement: HTMLTextAreaElement | null = null;
     private editingTextShape: ShapeData | null = null;
 
+    // Track pending shapes (locally created, waiting for server chatId)
+    // Key: localId, Value: shape data
+    private pendingShapes: Map<string, ShapeData> = new Map();
+    // Track shapes that were deleted before receiving chatId
+    private deletedPendingIds: Set<string> = new Set();
+    // Counter for generating unique local IDs
+    private localIdCounter: number = 0;
+
     // Style properties
     private strokeColor: string = "#ffffff";
     private fillColor: string = "transparent";
@@ -168,7 +177,10 @@ export class Game {
             const message = JSON.parse(event.data);
 
             if (message.type == "chat") {
-                const parsed = JSON.parse(message.message)
+                const parsed = JSON.parse(message.message);
+                // chatId comes from the top-level message, not from parsed
+                const chatId = message.chatId;
+                
                 if (parsed.deleteChatId) {
                     // Remove shape with this chatId
                     this.existingShapes = this.existingShapes.filter(s => s.chatId !== parsed.deleteChatId);
@@ -178,12 +190,79 @@ export class Game {
                     if (shapeData) {
                         shapeData.shape = parsed.updateShape.shape;
                     }
-                } else if (parsed.shape) {
-                    this.existingShapes.push({ shape: parsed.shape, chatId: parsed.chatId });
+                } else if (parsed.shape && chatId) {
+                    const localId = parsed.localId;
+                    
+                    // Check if this shape was deleted before we got the chatId
+                    if (localId && this.deletedPendingIds.has(localId)) {
+                        // This shape was deleted locally before server responded
+                        // Delete it from database now that we have the chatId
+                        deleteShape(chatId).then(success => {
+                            if (success) {
+                                console.log("Deleted pending shape from database:", chatId);
+                            }
+                        });
+                        // Remove from deleted pending list
+                        this.deletedPendingIds.delete(localId);
+                        // Don't add to existingShapes
+                        this.clearCanvas();
+                        return;
+                    }
+                    
+                    // Check if this is a shape we created locally (pending) using localId
+                    if (localId && this.pendingShapes.has(localId)) {
+                        // This is our own shape coming back - update chatId
+                        const pendingData = this.pendingShapes.get(localId);
+                        if (pendingData) {
+                            pendingData.chatId = chatId;
+                        }
+                        // Remove from pending
+                        this.pendingShapes.delete(localId);
+                    } else if (!localId) {
+                        // This is from another client (no localId) - add it
+                        this.existingShapes.push({ shape: parsed.shape, chatId: chatId });
+                    }
+                    // If it has localId but not in our pending, it's from another client's pending - ignore
                 }
                 this.clearCanvas();
             }
         }
+    }
+
+    // Helper to check if two shapes are the same (for deduplication)
+    private shapesMatch(shape1: Shape, shape2: Shape): boolean {
+        if (shape1.type !== shape2.type) return false;
+        
+        // Compare based on type
+        if (shape1.type === "rect" && shape2.type === "rect") {
+            return shape1.x === shape2.x && shape1.y === shape2.y && 
+                   shape1.width === shape2.width && shape1.height === shape2.height;
+        } else if (shape1.type === "circle" && shape2.type === "circle") {
+            return shape1.centerX === shape2.centerX && shape1.centerY === shape2.centerY &&
+                   shape1.radiusX === shape2.radiusX && shape1.radiusY === shape2.radiusY;
+        } else if (shape1.type === "diamond" && shape2.type === "diamond") {
+            return shape1.x === shape2.x && shape1.y === shape2.y && 
+                   shape1.width === shape2.width && shape1.height === shape2.height;
+        } else if (shape1.type === "line" && shape2.type === "line") {
+            return shape1.x1 === shape2.x1 && shape1.y1 === shape2.y1 &&
+                   shape1.x2 === shape2.x2 && shape1.y2 === shape2.y2;
+        } else if (shape1.type === "arrow" && shape2.type === "arrow") {
+            return shape1.x1 === shape2.x1 && shape1.y1 === shape2.y1 &&
+                   shape1.x2 === shape2.x2 && shape1.y2 === shape2.y2;
+        } else if (shape1.type === "text" && shape2.type === "text") {
+            return shape1.x === shape2.x && shape1.y === shape2.y && shape1.text === shape2.text;
+        } else if (shape1.type === "pencil" && shape2.type === "pencil") {
+            // Compare pencil points - just check length and first/last points
+            if (!shape1.points || !shape2.points) return false;
+            if (shape1.points.length !== shape2.points.length) return false;
+            if (shape1.points.length === 0) return true;
+            const first1 = shape1.points[0], first2 = shape2.points[0];
+            const last1 = shape1.points[shape1.points.length - 1];
+            const last2 = shape2.points[shape2.points.length - 1];
+            return first1.x === first2.x && first1.y === first2.y &&
+                   last1.x === last2.x && last1.y === last2.y;
+        }
+        return false;
     }
 
 
@@ -568,12 +647,18 @@ export class Game {
             return;
         }
 
-        this.existingShapes.push({ shape, chatId: undefined });
+        // Generate a unique local ID for this shape
+        const localId = `${Date.now()}-${this.localIdCounter++}`;
+        const shapeData: ShapeData = { shape, chatId: undefined, localId };
+        
+        this.existingShapes.push(shapeData);
+        this.pendingShapes.set(localId, shapeData);
 
         this.socket.send(JSON.stringify({
             type: "chat",
             message: JSON.stringify({
-                shape
+                shape,
+                localId
             }),
             roomId: this.roomId
         }))
@@ -716,13 +801,17 @@ export class Game {
                 });
                 
                 // Delete each shape
-                shapesToDelete.forEach(async (shapeData) => {
+                for (const shapeData of shapesToDelete) {
                     // Remove from local array
                     this.existingShapes = this.existingShapes.filter(s => s !== shapeData);
                     
-                    // Delete from database if it has a chatId
                     if (shapeData.chatId) {
-                        await deleteShape(shapeData.chatId);
+                        // Shape has chatId - delete from database and notify others
+                        deleteShape(shapeData.chatId).then(success => {
+                            if (success) {
+                                console.log("Shape deleted from database:", shapeData.chatId);
+                            }
+                        });
                         
                         // Notify other clients
                         this.socket.send(JSON.stringify({
@@ -732,8 +821,15 @@ export class Game {
                             }),
                             roomId: this.roomId
                         }));
+                    } else if (shapeData.localId) {
+                        // Shape doesn't have chatId yet (pending) - track by localId
+                        // This prevents it from being re-added when server sends back chatId
+                        this.deletedPendingIds.add(shapeData.localId);
+                        
+                        // Also remove from pendingShapes Map
+                        this.pendingShapes.delete(shapeData.localId);
                     }
-                });
+                }
                 
                 if (shapesToDelete.length > 0) {
                     this.clearCanvas();
@@ -1233,12 +1329,18 @@ export class Game {
                 style: this.getCurrentStyle()
             };
 
-            this.existingShapes.push({ shape, chatId: undefined });
+            // Generate a unique local ID for this shape
+            const localId = `${Date.now()}-${this.localIdCounter++}`;
+            const shapeData: ShapeData = { shape, chatId: undefined, localId };
+            
+            this.existingShapes.push(shapeData);
+            this.pendingShapes.set(localId, shapeData);
 
             this.socket.send(JSON.stringify({
                 type: "chat",
                 message: JSON.stringify({
-                    shape
+                    shape,
+                    localId
                 }),
                 roomId: this.roomId
             }));
