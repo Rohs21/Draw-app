@@ -106,6 +106,11 @@ export class Game {
     private strokeWidth: number = 2;
     private strokeStyle: "solid" | "dotted" | "dashed" = "solid";
 
+    // Pan/scroll offset
+    private panX: number = 0;
+    private panY: number = 0;
+    private isPanning: boolean = false;
+
     socket: WebSocket;
 
     constructor(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket) {
@@ -125,6 +130,7 @@ export class Game {
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler)
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler)
         this.canvas.removeEventListener("mouseleave", this.mouseLeaveHandler)
+        this.canvas.removeEventListener("wheel", this.wheelHandler)
         if (this.laserAnimationId) {
             cancelAnimationFrame(this.laserAnimationId);
         }
@@ -153,6 +159,14 @@ export class Game {
 
     setStrokeStyle(style: "solid" | "dotted" | "dashed") {
         this.strokeStyle = style;
+    }
+
+    // Convert screen coordinates to canvas (world) coordinates
+    private screenToCanvas(screenX: number, screenY: number): { x: number, y: number } {
+        return {
+            x: screenX - this.panX,
+            y: screenY - this.panY
+        };
     }
 
     getCurrentStyle(): ShapeStyle {
@@ -344,6 +358,10 @@ export class Game {
         this.ctx.fillStyle = "rgba(0, 0, 0)"
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Save context state and apply pan offset
+        this.ctx.save();
+        this.ctx.translate(this.panX, this.panY);
+
         this.existingShapes.map((shapeData) => {
             if (!shapeData || !shapeData.shape) return;
             const shape = shapeData.shape;
@@ -391,6 +409,9 @@ export class Game {
             // Reset line dash
             this.ctx.setLineDash([]);
         })
+
+        // Restore context state (removes pan translation)
+        this.ctx.restore();
     }
 
     private applyShapeStyle(style?: ShapeStyle) {
@@ -465,12 +486,23 @@ export class Game {
         if (this.isEditingText) return;
 
         this.clicked = true
-        this.startX = e.clientX
-        this.startY = e.clientY
+        
+        // For pan tool, use screen coordinates
+        if (this.selectedTool === "pan") {
+            this.isPanning = true;
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+            return;
+        }
+
+        // For all other tools, convert to canvas coordinates
+        const canvasCoords = this.screenToCanvas(e.clientX, e.clientY);
+        this.startX = canvasCoords.x;
+        this.startY = canvasCoords.y;
 
         // Handle text tool - create text at click position
         if (this.selectedTool === "text") {
-            this.createTextAtPosition(this.startX, this.startY);
+            this.createTextAtPosition(e.clientX, e.clientY);  // Text input uses screen coords for positioning
             this.clicked = false;
             return;
         }
@@ -528,14 +560,23 @@ export class Game {
 
     mouseUpHandler = (e: MouseEvent) => {
         this.clicked = false
-        const height = e.clientY - this.startY;
-        const width = e.clientX - this.startX;
+        
+        // Convert screen coordinates to canvas coordinates
+        const canvasCoords = this.screenToCanvas(e.clientX, e.clientY);
+        const height = canvasCoords.y - this.startY;
+        const width = canvasCoords.x - this.startX;
 
         const selectedTool = this.selectedTool;
         let shape: Shape | null = null;
 
         if (selectedTool === "text") {
             // Text is handled in mouseDown
+            return;
+        }
+
+        // Handle pan tool release
+        if (selectedTool === "pan") {
+            this.isPanning = false;
             return;
         }
 
@@ -575,8 +616,8 @@ export class Game {
         }
 
         if (selectedTool === "rect") {
-            const minX = Math.min(this.startX, e.clientX);
-            const minY = Math.min(this.startY, e.clientY);
+            const minX = Math.min(this.startX, canvasCoords.x);
+            const minY = Math.min(this.startY, canvasCoords.y);
             shape = {
                 type: "rect",
                 x: minX,
@@ -587,8 +628,8 @@ export class Game {
             }
         } else if (selectedTool === "circle") {
             // Calculate proper center and radii based on bounding box
-            const minX = Math.min(this.startX, e.clientX);
-            const minY = Math.min(this.startY, e.clientY);
+            const minX = Math.min(this.startX, canvasCoords.x);
+            const minY = Math.min(this.startY, canvasCoords.y);
             const boxWidth = Math.abs(width);
             const boxHeight = Math.abs(height);
             const radiusX = boxWidth / 2;
@@ -604,8 +645,8 @@ export class Game {
                 style: this.getCurrentStyle()
             }
         } else if (selectedTool === "diamond") {
-            const minX = Math.min(this.startX, e.clientX);
-            const minY = Math.min(this.startY, e.clientY);
+            const minX = Math.min(this.startX, canvasCoords.x);
+            const minY = Math.min(this.startY, canvasCoords.y);
             shape = {
                 type: "diamond",
                 x: minX,
@@ -628,8 +669,8 @@ export class Game {
                 type: "line",
                 x1: this.startX,
                 y1: this.startY,
-                x2: e.clientX,
-                y2: e.clientY,
+                x2: canvasCoords.x,
+                y2: canvasCoords.y,
                 style: this.getCurrentStyle()
             }
         } else if (selectedTool === "arrow") {
@@ -637,8 +678,8 @@ export class Game {
                 type: "arrow",
                 x1: this.startX,
                 y1: this.startY,
-                x2: e.clientX,
-                y2: e.clientY,
+                x2: canvasCoords.x,
+                y2: canvasCoords.y,
                 style: this.getCurrentStyle()
             }
         }
@@ -681,10 +722,11 @@ export class Game {
 
         // Update cursor based on resize handles when in select mode
         if (this.selectedTool === "select" && this.selectedShape && this.selectedShape.shape && !this.clicked) {
-            const handle = this.getResizeHandle(this.selectedShape.shape, e.clientX, e.clientY);
+            const canvasCoords = this.screenToCanvas(e.clientX, e.clientY);
+            const handle = this.getResizeHandle(this.selectedShape.shape, canvasCoords.x, canvasCoords.y);
             if (handle) {
                 this.canvas.style.cursor = this.getResizeCursor(handle);
-            } else if (this.isPointInShape(this.selectedShape.shape, e.clientX, e.clientY)) {
+            } else if (this.isPointInShape(this.selectedShape.shape, canvasCoords.x, canvasCoords.y)) {
                 this.canvas.style.cursor = 'move';
             } else {
                 this.canvas.style.cursor = 'default';
@@ -692,9 +734,24 @@ export class Game {
         }
 
         if (this.clicked) {
-            const height = e.clientY - this.startY;
-            const width = e.clientX - this.startX;
+            // Convert screen coordinates to canvas coordinates
+            const canvasCoords = this.screenToCanvas(e.clientX, e.clientY);
+            const height = canvasCoords.y - this.startY;
+            const width = canvasCoords.x - this.startX;
             const selectedTool = this.selectedTool;
+
+            // Handle panning
+            if (selectedTool === "pan" && this.isPanning) {
+                const deltaX = e.clientX - this.lastMouseX;
+                const deltaY = e.clientY - this.lastMouseY;
+                this.panX += deltaX;
+                this.panY += deltaY;
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                this.canvas.style.cursor = 'grabbing';
+                this.clearCanvas();
+                return;
+            }
 
             // Handle resizing selected shape
             if (selectedTool === "select" && this.isResizing && this.selectedShape && this.selectedShape.shape && this.resizeHandle) {
@@ -737,20 +794,24 @@ export class Game {
             }
 
             if (selectedTool === "rect") {
-                const currentX = e.clientX;
-                const currentY = e.clientY;
+                const currentX = canvasCoords.x;
+                const currentY = canvasCoords.y;
                 const minX = Math.min(this.startX, currentX);
                 const minY = Math.min(this.startY, currentY);
                 const rectWidth = Math.abs(width);
                 const rectHeight = Math.abs(height);
+                // Apply pan offset for preview drawing
+                this.ctx.save();
+                this.ctx.translate(this.panX, this.panY);
                 if (this.fillColor !== "transparent") {
                     this.ctx.fillRect(minX, minY, rectWidth, rectHeight);
                 }
-                this.ctx.strokeRect(minX, minY, rectWidth, rectHeight);   
+                this.ctx.strokeRect(minX, minY, rectWidth, rectHeight);
+                this.ctx.restore();
             } else if (selectedTool === "circle") {
                 // Calculate proper center and radii based on actual mouse position
-                const currentX = e.clientX;
-                const currentY = e.clientY;
+                const currentX = canvasCoords.x;
+                const currentY = canvasCoords.y;
                 const minX = Math.min(this.startX, currentX);
                 const minY = Math.min(this.startY, currentY);
                 const boxWidth = Math.abs(currentX - this.startX);
@@ -759,27 +820,37 @@ export class Game {
                 const radiusY = boxHeight / 2;
                 const centerX = minX + radiusX;
                 const centerY = minY + radiusY;
+                // Apply pan offset for preview drawing
+                this.ctx.save();
+                this.ctx.translate(this.panX, this.panY);
                 this.ctx.beginPath();
                 this.ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
                 if (this.fillColor !== "transparent") {
                     this.ctx.fill();
                 }
                 this.ctx.stroke();
-                this.ctx.closePath();                
+                this.ctx.closePath();
+                this.ctx.restore();
             } else if (selectedTool === "diamond") {
-                const currentX = e.clientX;
-                const currentY = e.clientY;
+                const currentX = canvasCoords.x;
+                const currentY = canvasCoords.y;
                 const minX = Math.min(this.startX, currentX);
                 const minY = Math.min(this.startY, currentY);
                 const diamondWidth = Math.abs(width);
                 const diamondHeight = Math.abs(height);
+                // Apply pan offset for preview drawing
+                this.ctx.save();
+                this.ctx.translate(this.panX, this.panY);
                 this.drawDiamondPreview(minX, minY, diamondWidth, diamondHeight);
+                this.ctx.restore();
             } else if (selectedTool === "pencil") {
-                const currentPoint = {x: e.clientX, y: e.clientY};
+                const currentPoint = {x: canvasCoords.x, y: canvasCoords.y};
                 this.pencilPoints.push(currentPoint);
                 
-                // Draw the entire pencil path
+                // Draw the entire pencil path with pan offset
                 if (this.pencilPoints.length > 1) {
+                    this.ctx.save();
+                    this.ctx.translate(this.panX, this.panY);
                     this.ctx.beginPath();
                     this.ctx.moveTo(this.pencilPoints[0].x, this.pencilPoints[0].y);
                     for (let i = 1; i < this.pencilPoints.length; i++) {
@@ -787,9 +858,10 @@ export class Game {
                     }
                     this.ctx.stroke();
                     this.ctx.closePath();
+                    this.ctx.restore();
                 }
             } else if (selectedTool === "eraser") {
-                const currentPoint = {x: e.clientX, y: e.clientY};
+                const currentPoint = {x: canvasCoords.x, y: canvasCoords.y};
                 this.eraserPoints.push(currentPoint);
                 
                 // Check if eraser is over any shape and delete it instantly
@@ -835,16 +907,22 @@ export class Game {
                     this.clearCanvas();
                 }
                 
-                // Draw eraser cursor
-                this.drawEraserCursor(currentPoint.x, currentPoint.y);
+                // Draw eraser cursor (uses screen coords)
+                this.drawEraserCursor(e.clientX, e.clientY);
             } else if (selectedTool === "line") {
+                this.ctx.save();
+                this.ctx.translate(this.panX, this.panY);
                 this.ctx.beginPath();
                 this.ctx.moveTo(this.startX, this.startY);
-                this.ctx.lineTo(e.clientX, e.clientY);
+                this.ctx.lineTo(canvasCoords.x, canvasCoords.y);
                 this.ctx.stroke();
                 this.ctx.closePath();
+                this.ctx.restore();
             } else if (selectedTool === "arrow") {
-                this.drawArrowPreview(this.startX, this.startY, e.clientX, e.clientY);
+                this.ctx.save();
+                this.ctx.translate(this.panX, this.panY);
+                this.drawArrowPreview(this.startX, this.startY, canvasCoords.x, canvasCoords.y);
+                this.ctx.restore();
             } else if (selectedTool === "laser") {
                 const currentPoint = {x: e.clientX, y: e.clientY, timestamp: Date.now()};
                 this.laserPoints.push(currentPoint);
@@ -933,12 +1011,28 @@ export class Game {
         this.canvas.addEventListener("mouseup", this.mouseUpHandler)
         this.canvas.addEventListener("mousemove", this.mouseMoveHandler)
         this.canvas.addEventListener("mouseleave", this.mouseLeaveHandler)
+        this.canvas.addEventListener("wheel", this.wheelHandler, { passive: false })
+    }
+
+    wheelHandler = (e: WheelEvent) => {
+        // Prevent default browser scroll
+        e.preventDefault();
+        
+        // Pan the canvas with scroll wheel
+        this.panX -= e.deltaX;
+        this.panY -= e.deltaY;
+        this.clearCanvas();
     }
 
     mouseLeaveHandler = () => {
         // Clear the cursor when mouse leaves canvas
         if ((this.selectedTool === "eraser" || this.selectedTool === "laser") && !this.clicked) {
             this.clearCanvas();
+        }
+        // Reset panning state
+        if (this.isPanning) {
+            this.isPanning = false;
+            this.canvas.style.cursor = 'grab';
         }
     }
 
@@ -1042,6 +1136,10 @@ export class Game {
         let bbox = this.getShapeBoundingBox(shape);
         if (!bbox) return;
 
+        // Apply pan offset for selection box
+        this.ctx.save();
+        this.ctx.translate(this.panX, this.panY);
+
         const padding = 8;
         this.ctx.strokeStyle = "rgba(74, 144, 226, 0.8)";
         this.ctx.lineWidth = 2;
@@ -1078,6 +1176,8 @@ export class Game {
             this.ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
             this.ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
         });
+
+        this.ctx.restore();
     }
 
     private getShapeBoundingBox(shape: Shape): { minX: number, minY: number, maxX: number, maxY: number } | null {
@@ -1318,10 +1418,13 @@ export class Game {
             });
             const textHeight = lines.length * fontSize * 1.2;
 
+            // Convert screen position to canvas coordinates
+            const canvasCoords = this.screenToCanvas(rect.left, rect.top);
+
             const shape: Shape = {
                 type: "text",
-                x: rect.left,
-                y: rect.top,
+                x: canvasCoords.x,
+                y: canvasCoords.y,
                 width: Math.max(maxWidth + 10, 50),
                 height: Math.max(textHeight + 10, 30),
                 text: text,

@@ -42,6 +42,8 @@ export default function Dashboard() {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
   const [roomName, setRoomName] = useState("")
   const [joinRoomId, setJoinRoomId] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -168,17 +170,36 @@ export default function Dashboard() {
   }
 
   async function deleteRoom(roomSlug: string, roomId: number) {
+    setIsSubmitting(true)
     try {
       const token = localStorage.getItem("token")
-      await fetch(`${API_BASE_URL}/room/${roomSlug}`, {
+      const res = await fetch(`${API_BASE_URL}/room/${roomSlug}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
-      setRooms((prev) => prev.filter((room) => room.id !== roomId))
-      setOpenMenuId(null)
+      
+      if (res.ok) {
+        setRooms((prev) => prev.filter((room) => room.id !== roomId))
+        setShowDeleteModal(false)
+        setRoomToDelete(null)
+      } else {
+        const data = await res.json()
+        setError(data.message || "Failed to delete room")
+      }
     } catch (err) {
       console.error("Failed to delete room:", err)
+      setError("Failed to delete room. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+      setOpenMenuId(null)
     }
+  }
+
+  function confirmDeleteRoom(room: Room) {
+    setRoomToDelete(room)
+    setShowDeleteModal(true)
+    setOpenMenuId(null)
+    setError(null)
   }
 
   function formatDate(dateString?: string) {
@@ -388,7 +409,7 @@ export default function Dashboard() {
                           Open room
                         </button>
                         <button
-                          onClick={() => deleteRoom(room.slug, room.id)}
+                          onClick={() => confirmDeleteRoom(room)}
                           className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -543,6 +564,72 @@ export default function Dashboard() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && roomToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Delete Room</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setRoomToDelete(null)
+                  setError(null)
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                Are you sure you want to delete <span className="font-semibold text-gray-900">"{roomToDelete.slug}"</span>? 
+                This action cannot be undone and all drawings in this room will be permanently deleted.
+              </p>
+
+              {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setRoomToDelete(null)
+                    setError(null)
+                  }}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteRoom(roomToDelete.slug, roomToDelete.id)}
+                  disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-500 border-2 border-red-600 rounded-xl font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      Delete
+                      <Trash2 className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

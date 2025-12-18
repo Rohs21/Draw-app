@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, LogOut, Crosshair, Type } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, LogOut, Crosshair, Type, Hand } from "lucide-react";
 import { Game, ShapeStyle } from "@/draw/Game";
 
-export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser" | "text";
+export type Tool = "select" | "pan" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser" | "text";
 
 const STROKE_COLORS = ["#e03131", "#2f9e44", "#1971c2", "#f08c00", "#ffffff", "#868e96"];
 const FILL_COLORS = ["#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99", "transparent", "#e9ecef"];
@@ -54,9 +54,14 @@ export function Canvas({
             }
             
             switch (e.key) {
+                case "h":
+                case "H":
+                    setSelectedTool("pan");
+                    break;
                 case "1":
                     setSelectedTool("select");
                     break;
+                
                 case "2":
                     setSelectedTool("rect");
                     break;
@@ -132,6 +137,7 @@ export function Canvas({
                 cursor: selectedTool === "eraser" ? "none" : 
                        selectedTool === "laser" ? "none" :
                        selectedTool === "text" ? "text" :
+                       selectedTool === "pan" ? "grab" :
                        selectedTool === "select" ? "default" : "crosshair"
             }}
             onMouseDown={() => setIsDrawing(true)}
@@ -176,6 +182,14 @@ function Topbar({selectedTool, setSelectedTool, isDrawing}: {
             border: "1px solid rgba(80, 80, 80, 0.4)",
             pointerEvents: isDrawing ? "none" : "auto"
         }}>
+            
+            <ToolButton 
+                onClick={() => setSelectedTool("pan")}
+                activated={selectedTool === "pan"}
+                icon={<Hand size={18} />}
+                label="H"
+                tooltip="Pan — H"
+            />
             <ToolButton 
                 onClick={() => setSelectedTool("select")}
                 activated={selectedTool === "select"}

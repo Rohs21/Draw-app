@@ -200,28 +200,32 @@ app.put("/chat/:chatId", async (req, res) => {
 
 
 app.delete("/room/:id", middleware, async (req, res) => {
-  // Rename for clarity: The URL parameter is the slug now
   const roomSlug = req.params.id; 
   const userId = req.userId;
 
   try {
     // 1. Find the room using the SLUG
     const room = await prismaClient.room.findUnique({
-      where: { slug: roomSlug }, // <-- **Key Change: Find by slug**
+      where: { slug: roomSlug },
     });
 
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
     }
 
-    // 2. Authorization check (remains the same)
+    // 2. Authorization check
     if (room.adminId !== userId) {
       return res.status(403).json({ message: "You are not allowed to delete this room" });
     }
 
-    // 3. Delete the room using the SLUG
+    // 3. Delete all chats in the room first (due to foreign key constraint)
+    await prismaClient.chat.deleteMany({
+      where: { roomId: room.id },
+    });
+
+    // 4. Delete the room
     await prismaClient.room.delete({
-      where: { slug: roomSlug }, // <-- **Key Change: Delete by slug**
+      where: { slug: roomSlug },
     });
 
     res.status(200).json({ message: "Room deleted successfully", slug: roomSlug });
