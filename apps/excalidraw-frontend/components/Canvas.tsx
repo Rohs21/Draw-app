@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, LogOut, Crosshair } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser, ArrowRight, Minus, Pointer, Diamond, LogOut, Crosshair, Type } from "lucide-react";
 import { Game, ShapeStyle } from "@/draw/Game";
 
-export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser";
+export type Tool = "select" | "circle" | "rect" | "diamond" | "pencil" | "eraser" | "line" | "arrow" | "laser" | "text";
 
 const STROKE_COLORS = ["#e03131", "#2f9e44", "#1971c2", "#f08c00", "#ffffff", "#868e96"];
 const FILL_COLORS = ["#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99", "transparent", "#e9ecef"];
@@ -76,9 +76,12 @@ export function Canvas({
                     setSelectedTool("pencil");
                     break;
                 case "8":
-                    setSelectedTool("laser");
+                    setSelectedTool("text");
                     break;
                 case "9":
+                    setSelectedTool("laser");
+                    break;
+                case "0":
                     setSelectedTool("eraser");
                     break;
             }
@@ -102,6 +105,16 @@ export function Canvas({
 
     }, [canvasRef]);
 
+    // Handle double-click to edit text
+    const handleDoubleClick = (e: React.MouseEvent) => {
+        if (game && selectedTool === "select") {
+            const selectedShape = game.getSelectedShape();
+            if (selectedShape && selectedShape.shape?.type === "text") {
+                game.editTextShape(selectedShape);
+            }
+        }
+    };
+
     return <div style={{
         height: "100vh",
         overflow: "hidden",
@@ -118,11 +131,13 @@ export function Canvas({
                 flex: 1,
                 cursor: selectedTool === "eraser" ? "none" : 
                        selectedTool === "laser" ? "none" :
+                       selectedTool === "text" ? "text" :
                        selectedTool === "select" ? "default" : "crosshair"
             }}
             onMouseDown={() => setIsDrawing(true)}
             onMouseUp={() => setIsDrawing(false)}
             onMouseLeave={() => setIsDrawing(false)}
+            onDoubleClick={handleDoubleClick}
         ></canvas>
         <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} isDrawing={isDrawing} />
         <StylePanel 
@@ -211,11 +226,18 @@ function Topbar({selectedTool, setSelectedTool, isDrawing}: {
                 tooltip="Pencil — 7"
             />
             <ToolButton 
+                onClick={() => setSelectedTool("text")}
+                activated={selectedTool === "text"}
+                icon={<Type size={18} />}
+                label="8"
+                tooltip="Text — 8"
+            />
+            <ToolButton 
                 onClick={() => setSelectedTool("laser")}
                 activated={selectedTool === "laser"}
                 icon={<Crosshair size={18} />}
-                label="8"
-                tooltip="Laser — 8"
+                label="9"
+                tooltip="Laser — 9"
             />
             
             <div style={{
@@ -229,8 +251,8 @@ function Topbar({selectedTool, setSelectedTool, isDrawing}: {
                 onClick={() => setSelectedTool("eraser")}
                 activated={selectedTool === "eraser"}
                 icon={<Eraser size={18} />}
-                label="9"
-                tooltip="Eraser — 9"
+                label="0"
+                tooltip="Eraser — 0"
             />
             
             <div style={{

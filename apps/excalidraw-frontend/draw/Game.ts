@@ -50,6 +50,14 @@ type Shape = ({
     y1: number;
     x2: number;
     y2: number;
+} | {
+    type: "text";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    fontSize: number;
 }) & BaseShape;
 
 export class Game {
@@ -72,6 +80,16 @@ export class Game {
     private isDragging: boolean = false;
     private lastMouseX: number = 0;
     private lastMouseY: number = 0;
+
+    // Resize handle tracking
+    private isResizing: boolean = false;
+    private resizeHandle: string | null = null;
+    private resizeStartBbox: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+
+    // Text editing
+    private isEditingText: boolean = false;
+    private textInputElement: HTMLTextAreaElement | null = null;
+    private editingTextShape: ShapeData | null = null;
 
     // Style properties
     private strokeColor: string = "#ffffff";
@@ -201,6 +219,11 @@ export class Game {
             return this.distanceToLine(x, y, shape.x1, shape.y1, shape.x2, shape.y2) < threshold;
         } else if (shape.type === "arrow") {
             return this.distanceToLine(x, y, shape.x1, shape.y1, shape.x2, shape.y2) < threshold;
+        } else if (shape.type === "text") {
+            return x >= shape.x - threshold && 
+                   x <= shape.x + shape.width + threshold &&
+                   y >= shape.y - threshold && 
+                   y <= shape.y + shape.height + threshold;
         }
         return false;
     }
@@ -282,6 +305,8 @@ export class Game {
                 this.drawDiamondWithStyle(shape.x, shape.y, shape.width, shape.height, shape.style);
             } else if (shape.type === "arrow") {
                 this.drawArrowWithStyle(shape.x1, shape.y1, shape.x2, shape.y2, shape.style);
+            } else if (shape.type === "text") {
+                this.drawTextShape(shape);
             }
             
             // Reset line dash
@@ -357,18 +382,40 @@ export class Game {
     }
 
     mouseDownHandler = (e: MouseEvent) => {
+        // Ignore if editing text
+        if (this.isEditingText) return;
+
         this.clicked = true
         this.startX = e.clientX
         this.startY = e.clientY
+
+        // Handle text tool - create text at click position
+        if (this.selectedTool === "text") {
+            this.createTextAtPosition(this.startX, this.startY);
+            this.clicked = false;
+            return;
+        }
         
         if (this.selectedTool === "select") {
-            // Check if clicking on the already selected shape to drag it
-            if (this.selectedShape && this.selectedShape.shape && 
-                this.isPointInShape(this.selectedShape.shape, this.startX, this.startY)) {
-                this.isDragging = true;
-                this.lastMouseX = this.startX;
-                this.lastMouseY = this.startY;
-                return;
+            // Check if clicking on a resize handle of selected shape
+            if (this.selectedShape && this.selectedShape.shape) {
+                const handle = this.getResizeHandle(this.selectedShape.shape, this.startX, this.startY);
+                if (handle) {
+                    this.isResizing = true;
+                    this.resizeHandle = handle;
+                    this.resizeStartBbox = this.getShapeBoundingBox(this.selectedShape.shape);
+                    this.lastMouseX = this.startX;
+                    this.lastMouseY = this.startY;
+                    return;
+                }
+                
+                // Check if clicking inside the selected shape to drag it
+                if (this.isPointInShape(this.selectedShape.shape, this.startX, this.startY)) {
+                    this.isDragging = true;
+                    this.lastMouseX = this.startX;
+                    this.lastMouseY = this.startY;
+                    return;
+                }
             }
             
             // Check if clicking on an existing shape to select it
@@ -408,12 +455,17 @@ export class Game {
         const selectedTool = this.selectedTool;
         let shape: Shape | null = null;
 
+        if (selectedTool === "text") {
+            // Text is handled in mouseDown
+            return;
+        }
+
         if (selectedTool === "select") {
-            // Save the moved shape to database
-            if (this.isDragging && this.selectedShape && this.selectedShape.chatId) {
+            // Save the moved/resized shape to database
+            if ((this.isDragging || this.isResizing) && this.selectedShape && this.selectedShape.chatId) {
                 updateShape(this.selectedShape.chatId, this.selectedShape.shape);
                 
-                // Notify other clients about the move
+                // Notify other clients about the move/resize
                 this.socket.send(JSON.stringify({
                     type: "chat",
                     message: JSON.stringify({
@@ -426,6 +478,9 @@ export class Game {
                 }));
             }
             this.isDragging = false;
+            this.isResizing = false;
+            this.resizeHandle = null;
+            this.resizeStartBbox = null;
             return;
         }
 
@@ -539,10 +594,34 @@ export class Game {
             return;
         }
 
+        // Update cursor based on resize handles when in select mode
+        if (this.selectedTool === "select" && this.selectedShape && this.selectedShape.shape && !this.clicked) {
+            const handle = this.getResizeHandle(this.selectedShape.shape, e.clientX, e.clientY);
+            if (handle) {
+                this.canvas.style.cursor = this.getResizeCursor(handle);
+            } else if (this.isPointInShape(this.selectedShape.shape, e.clientX, e.clientY)) {
+                this.canvas.style.cursor = 'move';
+            } else {
+                this.canvas.style.cursor = 'default';
+            }
+        }
+
         if (this.clicked) {
             const height = e.clientY - this.startY;
             const width = e.clientX - this.startX;
             const selectedTool = this.selectedTool;
+
+            // Handle resizing selected shape
+            if (selectedTool === "select" && this.isResizing && this.selectedShape && this.selectedShape.shape && this.resizeHandle) {
+                const deltaX = e.clientX - this.lastMouseX;
+                const deltaY = e.clientY - this.lastMouseY;
+                this.resizeShape(this.selectedShape.shape, this.resizeHandle, deltaX, deltaY);
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                this.clearCanvas();
+                this.drawSelectionBox(this.selectedShape.shape);
+                return;
+            }
 
             // Handle dragging selected shape
             if (selectedTool === "select" && this.isDragging && this.selectedShape && this.selectedShape.shape) {
@@ -792,6 +871,9 @@ export class Game {
             shape.y1 += deltaY;
             shape.x2 += deltaX;
             shape.y2 += deltaY;
+        } else if (shape.type === "text") {
+            shape.x += deltaX;
+            shape.y += deltaY;
         }
     }
 
@@ -877,17 +959,28 @@ export class Game {
         this.ctx.setLineDash([]);
         this.ctx.lineWidth = 1;
 
-        // Draw selection handles
-        const handleSize = 6;
-        this.ctx.fillStyle = "rgba(74, 144, 226, 1)";
+        // Draw selection handles - corners and edges
+        const handleSize = 8;
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.strokeStyle = "rgba(74, 144, 226, 1)";
+        this.ctx.lineWidth = 2;
+        
         const handles = [
+            // Corners
             { x: bbox.minX - padding, y: bbox.minY - padding },
             { x: bbox.maxX + padding, y: bbox.minY - padding },
             { x: bbox.minX - padding, y: bbox.maxY + padding },
-            { x: bbox.maxX + padding, y: bbox.maxY + padding }
+            { x: bbox.maxX + padding, y: bbox.maxY + padding },
+            // Edge midpoints
+            { x: (bbox.minX + bbox.maxX) / 2, y: bbox.minY - padding },
+            { x: (bbox.minX + bbox.maxX) / 2, y: bbox.maxY + padding },
+            { x: bbox.minX - padding, y: (bbox.minY + bbox.maxY) / 2 },
+            { x: bbox.maxX + padding, y: (bbox.minY + bbox.maxY) / 2 }
         ];
+        
         handles.forEach(handle => {
             this.ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+            this.ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
         });
     }
 
@@ -940,7 +1033,479 @@ export class Game {
                 maxX: Math.max(shape.x1, shape.x2),
                 maxY: Math.max(shape.y1, shape.y2)
             };
+        } else if (shape.type === "text") {
+            return {
+                minX: shape.x,
+                minY: shape.y,
+                maxX: shape.x + shape.width,
+                maxY: shape.y + shape.height
+            };
         }
         return null;
+    }
+
+    private drawTextShape(shape: Extract<Shape, { type: "text" }>) {
+        const style = shape.style;
+        
+        // Draw text box border when selected
+        this.ctx.save();
+        
+        // Set text style
+        this.ctx.font = `${shape.fontSize}px sans-serif`;
+        this.ctx.fillStyle = style?.strokeColor || "#ffffff";
+        this.ctx.textBaseline = "top";
+        
+        // Word wrap and draw text
+        const lines = this.wrapText(shape.text, shape.width - 10);
+        const lineHeight = shape.fontSize * 1.2;
+        
+        lines.forEach((line, index) => {
+            this.ctx.fillText(line, shape.x + 5, shape.y + 5 + index * lineHeight);
+        });
+        
+        this.ctx.restore();
+    }
+
+    private wrapText(text: string, maxWidth: number): string[] {
+        const words = text.split(' ');
+        const lines: string[] = [];
+        let currentLine = '';
+
+        for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const metrics = this.ctx.measureText(testLine);
+            
+            if (metrics.width > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+        
+        // Handle newlines
+        const finalLines: string[] = [];
+        lines.forEach(line => {
+            const splitLines = line.split('\n');
+            finalLines.push(...splitLines);
+        });
+        
+        return finalLines.length > 0 ? finalLines : [''];
+    }
+
+    createTextAtPosition(x: number, y: number) {
+        // Create a text input overlay
+        if (this.textInputElement) {
+            this.finishTextEditing();
+        }
+
+        const fontSize = 20;
+
+        const textarea = document.createElement('textarea');
+        textarea.style.cssText = `
+            position: fixed;
+            left: ${x}px;
+            top: ${y}px;
+            min-width: 1px;
+            min-height: ${fontSize * 1.2}px;
+            width: auto;
+            height: auto;
+            font-size: ${fontSize}px;
+            font-family: sans-serif;
+            color: ${this.strokeColor};
+            background: transparent;
+            border: none !important;
+            border-width: 0 !important;
+            outline: none !important;
+            padding: 0;
+            margin: 0;
+            resize: none;
+            overflow: hidden;
+            z-index: 10000;
+            white-space: pre;
+            line-height: 1.2;
+            caret-color: ${this.strokeColor};
+            box-shadow: none !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        `;
+        
+        // Hide scrollbar for webkit browsers
+        const style = document.createElement('style');
+        style.textContent = `
+            textarea::-webkit-scrollbar { display: none; width: 0; height: 0; }
+            textarea::-webkit-resizer { display: none; }
+        `;
+        document.head.appendChild(style);
+
+        // Auto-resize textarea as user types
+        const autoResize = () => {
+            textarea.style.width = 'auto';
+            textarea.style.height = 'auto';
+            textarea.style.width = Math.max(textarea.scrollWidth, 20) + 'px';
+            textarea.style.height = Math.max(textarea.scrollHeight, fontSize * 1.2) + 'px';
+        };
+
+        textarea.addEventListener('input', autoResize);
+
+        // Prevent events from bubbling to canvas
+        textarea.addEventListener('mousedown', (e) => e.stopPropagation());
+        textarea.addEventListener('mouseup', (e) => e.stopPropagation());
+        textarea.addEventListener('mousemove', (e) => e.stopPropagation());
+        textarea.addEventListener('click', (e) => e.stopPropagation());
+
+        this.textInputElement = textarea;
+        this.isEditingText = true;
+
+        document.body.appendChild(textarea);
+        
+        // Use requestAnimationFrame to ensure DOM is ready before focusing
+        requestAnimationFrame(() => {
+            textarea.focus();
+            autoResize();
+        });
+
+        // Handle finishing text input
+        const finishEditing = () => {
+            this.finishTextEditing();
+        };
+
+        textarea.addEventListener('blur', (e) => {
+            // Small delay to allow for resize operations
+            setTimeout(() => {
+                if (!document.body.contains(textarea)) return;
+                finishEditing();
+            }, 100);
+        });
+
+        textarea.addEventListener('keydown', (e) => {
+            // Stop propagation for all keys to prevent canvas shortcuts from triggering
+            e.stopPropagation();
+            
+            if (e.key === 'Escape') {
+                // Cancel without saving
+                if (this.textInputElement) {
+                    document.body.removeChild(this.textInputElement);
+                    this.textInputElement = null;
+                    this.isEditingText = false;
+                }
+            }
+        });
+    }
+
+    private finishTextEditing() {
+        if (!this.textInputElement || !document.body.contains(this.textInputElement)) {
+            this.textInputElement = null;
+            this.isEditingText = false;
+            return;
+        }
+
+        const text = this.textInputElement.value;
+        const rect = this.textInputElement.getBoundingClientRect();
+        const fontSize = 20;
+        
+        if (text.trim()) {
+            // Calculate proper dimensions based on text content
+            this.ctx.font = `${fontSize}px sans-serif`;
+            const lines = text.split('\n');
+            let maxWidth = 0;
+            lines.forEach(line => {
+                const metrics = this.ctx.measureText(line);
+                maxWidth = Math.max(maxWidth, metrics.width);
+            });
+            const textHeight = lines.length * fontSize * 1.2;
+
+            const shape: Shape = {
+                type: "text",
+                x: rect.left,
+                y: rect.top,
+                width: Math.max(maxWidth + 10, 50),
+                height: Math.max(textHeight + 10, 30),
+                text: text,
+                fontSize: fontSize,
+                style: this.getCurrentStyle()
+            };
+
+            this.existingShapes.push({ shape, chatId: undefined });
+
+            this.socket.send(JSON.stringify({
+                type: "chat",
+                message: JSON.stringify({
+                    shape
+                }),
+                roomId: this.roomId
+            }));
+        }
+
+        document.body.removeChild(this.textInputElement);
+        this.textInputElement = null;
+        this.isEditingText = false;
+        this.clearCanvas();
+    }
+
+    editTextShape(shapeData: ShapeData) {
+        if (!shapeData.shape || shapeData.shape.type !== "text") return;
+        
+        const shape = shapeData.shape;
+        
+        // Remove the shape from canvas temporarily
+        this.editingTextShape = shapeData;
+        const textColor = shape.style?.strokeColor || this.strokeColor;
+        
+        const textarea = document.createElement('textarea');
+        textarea.style.cssText = `
+            position: fixed;
+            left: ${shape.x}px;
+            top: ${shape.y}px;
+            min-width: 1px;
+            min-height: ${shape.fontSize * 1.2}px;
+            width: auto;
+            height: auto;
+            font-size: ${shape.fontSize}px;
+            font-family: sans-serif;
+            color: ${textColor};
+            background: transparent;
+            border: none !important;
+            border-width: 0 !important;
+            outline: none !important;
+            padding: 0;
+            margin: 0;
+            resize: none;
+            overflow: hidden;
+            z-index: 10000;
+            white-space: pre;
+            line-height: 1.2;
+            caret-color: ${textColor};
+            box-shadow: none !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        `;
+        textarea.value = shape.text;
+
+        // Auto-resize textarea as user types
+        const autoResize = () => {
+            textarea.style.width = 'auto';
+            textarea.style.height = 'auto';
+            textarea.style.width = Math.max(textarea.scrollWidth, 20) + 'px';
+            textarea.style.height = Math.max(textarea.scrollHeight, shape.fontSize * 1.2) + 'px';
+        };
+
+        textarea.addEventListener('input', autoResize);
+
+        // Prevent events from bubbling to canvas
+        textarea.addEventListener('mousedown', (e) => e.stopPropagation());
+        textarea.addEventListener('mouseup', (e) => e.stopPropagation());
+        textarea.addEventListener('mousemove', (e) => e.stopPropagation());
+        textarea.addEventListener('click', (e) => e.stopPropagation());
+
+        this.textInputElement = textarea;
+        this.isEditingText = true;
+
+        document.body.appendChild(textarea);
+        
+        // Use requestAnimationFrame to ensure DOM is ready before focusing
+        requestAnimationFrame(() => {
+            textarea.focus();
+            textarea.select();
+            autoResize();
+        });
+
+        textarea.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (!document.body.contains(textarea)) return;
+                this.finishEditingExistingText();
+            }, 100);
+        });
+
+        textarea.addEventListener('keydown', (e) => {
+            // Stop propagation for all keys to prevent canvas shortcuts
+            e.stopPropagation();
+            
+            if (e.key === 'Escape') {
+                if (this.textInputElement) {
+                    document.body.removeChild(this.textInputElement);
+                    this.textInputElement = null;
+                    this.isEditingText = false;
+                    this.editingTextShape = null;
+                    this.clearCanvas();
+                }
+            }
+        });
+    }
+
+    private finishEditingExistingText() {
+        if (!this.textInputElement || !this.editingTextShape || !document.body.contains(this.textInputElement)) {
+            this.textInputElement = null;
+            this.isEditingText = false;
+            this.editingTextShape = null;
+            return;
+        }
+
+        const text = this.textInputElement.value.trim();
+        const rect = this.textInputElement.getBoundingClientRect();
+        const shape = this.editingTextShape.shape;
+
+        if (shape && shape.type === "text") {
+            if (text) {
+                // Calculate proper dimensions based on text content
+                this.ctx.font = `${shape.fontSize}px sans-serif`;
+                const lines = text.split('\n');
+                let maxWidth = 0;
+                lines.forEach(line => {
+                    const metrics = this.ctx.measureText(line);
+                    maxWidth = Math.max(maxWidth, metrics.width);
+                });
+                const textHeight = lines.length * shape.fontSize * 1.2;
+
+                // Update the existing shape
+                shape.text = text;
+                shape.x = rect.left;
+                shape.y = rect.top;
+                shape.width = Math.max(maxWidth + 10, 50);
+                shape.height = Math.max(textHeight + 10, 30);
+
+                // Update in database
+                if (this.editingTextShape.chatId) {
+                    updateShape(this.editingTextShape.chatId, shape);
+                    
+                    this.socket.send(JSON.stringify({
+                        type: "chat",
+                        message: JSON.stringify({
+                            updateShape: {
+                                chatId: this.editingTextShape.chatId,
+                                shape: shape
+                            }
+                        }),
+                        roomId: this.roomId
+                    }));
+                }
+            } else {
+                // Delete the shape if text is empty
+                this.existingShapes = this.existingShapes.filter(s => s !== this.editingTextShape);
+                if (this.editingTextShape.chatId) {
+                    deleteShape(this.editingTextShape.chatId);
+                    this.socket.send(JSON.stringify({
+                        type: "chat",
+                        message: JSON.stringify({
+                            deleteChatId: this.editingTextShape.chatId
+                        }),
+                        roomId: this.roomId
+                    }));
+                }
+            }
+        }
+
+        document.body.removeChild(this.textInputElement);
+        this.textInputElement = null;
+        this.isEditingText = false;
+        this.editingTextShape = null;
+        this.clearCanvas();
+    }
+
+    isTextEditing(): boolean {
+        return this.isEditingText;
+    }
+
+    getSelectedShape(): ShapeData | null {
+        return this.selectedShape;
+    }
+
+    // Resize functionality for text boxes
+    private getResizeHandle(shape: Shape, x: number, y: number): string | null {
+        const bbox = this.getShapeBoundingBox(shape);
+        if (!bbox) return null;
+
+        const padding = 8;
+        const handleSize = 12;
+
+        const handles = {
+            'nw': { x: bbox.minX - padding, y: bbox.minY - padding },
+            'ne': { x: bbox.maxX + padding, y: bbox.minY - padding },
+            'sw': { x: bbox.minX - padding, y: bbox.maxY + padding },
+            'se': { x: bbox.maxX + padding, y: bbox.maxY + padding },
+            'n': { x: (bbox.minX + bbox.maxX) / 2, y: bbox.minY - padding },
+            's': { x: (bbox.minX + bbox.maxX) / 2, y: bbox.maxY + padding },
+            'w': { x: bbox.minX - padding, y: (bbox.minY + bbox.maxY) / 2 },
+            'e': { x: bbox.maxX + padding, y: (bbox.minY + bbox.maxY) / 2 }
+        };
+
+        for (const [key, pos] of Object.entries(handles)) {
+            if (Math.abs(x - pos.x) < handleSize && Math.abs(y - pos.y) < handleSize) {
+                return key;
+            }
+        }
+
+        return null;
+    }
+
+    private resizeShape(shape: Shape, handle: string, deltaX: number, deltaY: number) {
+        if (shape.type === "text" || shape.type === "rect" || shape.type === "diamond") {
+            switch (handle) {
+                case 'se':
+                    shape.width = Math.max(50, shape.width + deltaX);
+                    shape.height = Math.max(30, shape.height + deltaY);
+                    break;
+                case 'sw':
+                    const newWidthSW = Math.max(50, shape.width - deltaX);
+                    shape.x = shape.x + (shape.width - newWidthSW);
+                    shape.width = newWidthSW;
+                    shape.height = Math.max(30, shape.height + deltaY);
+                    break;
+                case 'ne':
+                    shape.width = Math.max(50, shape.width + deltaX);
+                    const newHeightNE = Math.max(30, shape.height - deltaY);
+                    shape.y = shape.y + (shape.height - newHeightNE);
+                    shape.height = newHeightNE;
+                    break;
+                case 'nw':
+                    const newWidthNW = Math.max(50, shape.width - deltaX);
+                    const newHeightNW = Math.max(30, shape.height - deltaY);
+                    shape.x = shape.x + (shape.width - newWidthNW);
+                    shape.y = shape.y + (shape.height - newHeightNW);
+                    shape.width = newWidthNW;
+                    shape.height = newHeightNW;
+                    break;
+                case 'n':
+                    const newHeightN = Math.max(30, shape.height - deltaY);
+                    shape.y = shape.y + (shape.height - newHeightN);
+                    shape.height = newHeightN;
+                    break;
+                case 's':
+                    shape.height = Math.max(30, shape.height + deltaY);
+                    break;
+                case 'w':
+                    const newWidthW = Math.max(50, shape.width - deltaX);
+                    shape.x = shape.x + (shape.width - newWidthW);
+                    shape.width = newWidthW;
+                    break;
+                case 'e':
+                    shape.width = Math.max(50, shape.width + deltaX);
+                    break;
+            }
+        }
+    }
+
+    private getResizeCursor(handle: string): string {
+        const cursors: Record<string, string> = {
+            'nw': 'nwse-resize',
+            'se': 'nwse-resize',
+            'ne': 'nesw-resize',
+            'sw': 'nesw-resize',
+            'n': 'ns-resize',
+            's': 'ns-resize',
+            'e': 'ew-resize',
+            'w': 'ew-resize'
+        };
+        return cursors[handle] || 'default';
     }
 }
