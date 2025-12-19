@@ -6,7 +6,10 @@
     "./client": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "prisma generate && tsc -b",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",

@@ -19,8 +19,7 @@ import {
   Loader2,
   X
 } from "lucide-react"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+import { HTTP_BACKEND } from "../../config"
 
 interface Room {
   id: number
@@ -69,7 +68,7 @@ export default function Dashboard() {
   async function fetchRooms() {
     try {
       const token = localStorage.getItem("token")
-      const res = await fetch(`${API_BASE_URL}/rooms`, {
+      const res = await fetch(`${HTTP_BACKEND}/rooms`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
@@ -91,7 +90,7 @@ export default function Dashboard() {
     setError(null)
     try {
       const token = localStorage.getItem("token")
-      const res = await fetch(`${API_BASE_URL}/room`, {
+      const res = await fetch(`${HTTP_BACKEND}/room`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: roomName.trim() }),
@@ -119,7 +118,7 @@ export default function Dashboard() {
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE_URL}/room/${joinRoomId.trim()}`)
+      const res = await fetch(`${HTTP_BACKEND}/room/${joinRoomId.trim()}`)
       const data = await res.json()
       if (!data.room) {
         setError("No room found with this name or ID.")
@@ -137,7 +136,7 @@ export default function Dashboard() {
     setIsSubmitting(true)
     try {
       const token = localStorage.getItem("token")
-      const res = await fetch(`${API_BASE_URL}/room/${roomSlug}`, {
+      const res = await fetch(`${HTTP_BACKEND}/room/${roomSlug}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })

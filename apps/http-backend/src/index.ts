@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
-import path from "path";
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config();
 
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -12,7 +11,10 @@ import cors from "cors";
 
 const app = express();
 app.use(express.json());
-app.use(cors())
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: true
+}))
 
 app.post("/signup", async (req, res) => {
 
@@ -237,4 +239,7 @@ app.delete("/room/:id", middleware, async (req, res) => {
 });
 
 
-app.listen(4000);
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`HTTP Backend running on port ${PORT}`);
+});
