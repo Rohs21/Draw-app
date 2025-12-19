@@ -10,6 +10,7 @@ import {
   Layers,
   MousePointer2,
   Star,
+  Github,
   ArrowRight,
   MonitorSmartphone,
   Palette,
@@ -601,76 +602,40 @@ const App: FC = () => {
       </section>
 
       {/* New Section 2: Stats & Social Proof with Animation */}
-      <section className="py-20 md:py-28 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
-        {/* Animated background grid */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "50px 50px",
-          }}
-        />
+      <section className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+<footer className="w-full bg-white border-t-4 border-black py-8 mt-auto">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+      
+      {/* Line 1: Brand & Copyright */}
+      <div className="flex items-center gap-3">
+        <span className="text-black font-black text-xl tracking-tight">SyncSketch</span>
+        <span className="text-slate-400 font-bold">© 2025</span>
+      </div>
 
-        {/* Floating orbs */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500 rounded-full opacity-20 blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-20 right-20 w-48 h-48 bg-indigo-500 rounded-full opacity-20 blur-3xl animate-pulse"
-          style={{ animationDelay: "0.5s" }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-500 rounded-full opacity-10 blur-3xl animate-pulse"
-          style={{ animationDelay: "1s" }}
-        />
+      {/* Line 2: Social Links */}
+      <div className="flex items-center gap-4">
+        {[
+          { name: '', href: 'https://x.com/rohansingh2104', icon: <span className="text-xs cursor: pointer;">𝕏</span> },
+          { name: 'LinkedIn', href: 'https://linkedin.com/in/rohan-singh212004', icon: <span className="text-xs cursor: pointer;"></span> },
+          { name: 'GitHub', href: 'https://github.com/Rohs21', icon: <Github className="w-4 h-4 cursor: pointer;" /> }
+        ].map((social) => (
+          <a
+            key={social.name}
+            href={social.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-4 py-2 bg-white border-2 border-black text-black font-black rounded-lg hover:bg-[#ffe599] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          >
+            {social.icon}
+            <span className="text-sm">{social.name}</span>
+          </a>
+        ))}
+      </div>
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-              Trusted by teams{" "}
-              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                worldwide
-              </span>
-            </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Join thousands of creators who have made SyncSketch their canvas of choice.
-            </p>
-          </div>
-
-          {/* Animated Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-16">
-            {[
-              { number: "50K+", label: "Active Users", icon: Users2 },
-              { number: "1M+", label: "Sketches Created", icon: PenTool },
-              { number: "99.9%", label: "Uptime", icon: Clock },
-              { number: "150+", label: "Countries", icon: Globe },
-            ].map((stat, index) => (
-              <div key={index} className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="absolute inset-0 bg-blue-500 rounded-xl opacity-20 blur-lg group-hover:opacity-40 transition-opacity" />
-                  <div className="relative w-16 h-16 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center group-hover:border-blue-500 transition-colors duration-300">
-                    <stat.icon className="w-8 h-8 text-blue-400" />
-                  </div>
-                </div>
-                <p className="text-3xl md:text-4xl font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">
-                  {stat.number}
-                </p>
-                <p className="text-gray-500 text-sm">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Brand logos placeholder */}
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-50">
-            {["Startup", "Agency", "Enterprise", "Studio", "Labs"].map((brand) => (
-              <div key={brand} className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-gray-700 flex items-center justify-center">
-                  <Rocket className="w-4 h-4" />
-                </div>
-                <span className="font-medium">{brand}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+    </div>
+  </div>
+</footer>
       </section>
     </div>
   )
