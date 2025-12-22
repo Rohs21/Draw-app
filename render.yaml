@@ -6,7 +6,7 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install && pnpm run build
+    buildCommand: corepack enable && pnpm install && cd packages/db && pnpm prisma generate && cd ../.. && pnpm run build
     startCommand: node apps/http-backend/dist/index.js
     envVars:
       - key: DATABASE_URL
@@ -25,7 +25,7 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install && pnpm run build
+    buildCommand: corepack enable && pnpm install && cd packages/db && pnpm prisma generate && cd ../.. && pnpm run build
     startCommand: node apps/ws-backend/dist/index.js
     envVars:
       - key: DATABASE_URL
