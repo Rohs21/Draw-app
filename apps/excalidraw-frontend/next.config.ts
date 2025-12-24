@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    // Reduce memory usage during build
+    webpackMemoryOptimizations: true,
+  },
 };
 
 export default nextConfig;
