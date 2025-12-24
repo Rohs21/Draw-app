@@ -1,6 +1,10 @@
+"use client"
+
 import type React from "react"
+import { useState } from "react"
 import type { FC, HTMLAttributes, ButtonHTMLAttributes } from "react"
 import {
+  X,
   Share2,
   Users2,
   Sparkles,
@@ -85,8 +89,36 @@ const Card: FC<CardProps> = ({ children, className = "", ...props }) => (
 
 // --- Main App Component ---
 const App: FC = () => {
+  const [isVideoOpen, setIsVideoOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white font-sans relative">
+      {/* Video Demo Modal */}
+      {isVideoOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setIsVideoOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl mx-4 bg-black rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsVideoOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Close video"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            <video
+              src="/demo.mp4"
+              controls
+              autoPlay
+              className="w-full aspect-video"
+            />
+          </div>
+        </div>
+      )}
       {/* Hero Section - UNCHANGED */}
       <header
         className="relative py-24 sm:py-32 overflow-hidden fade-sides"
@@ -116,12 +148,12 @@ const App: FC = () => {
               >
                 Start Drawing
               </Link>
-              <Link
-                href=""
+              <button
+                onClick={() => setIsVideoOpen(true)}
                 className="flex items-center justify-center bg-[#ffe599] border border-black text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-yellow-500 transition-colors"
               >
                 Live Demo
-              </Link>
+              </button>
             </div>
             {/* Arrow Image */}
             <div className="mt-10 flex justify-center">
@@ -131,7 +163,7 @@ const App: FC = () => {
         </div>
       </header>
 
-      <section className="py-16 md:py-24 relative overflow-hidden">
+      <section id="how-it-works" className="py-16 md:py-24 relative overflow-hidden">
         {/* Decorative background shapes */}
         <div className="absolute inset-0 pointer-events-none">
           <svg className="absolute top-10 left-10 w-48 h-48 text-blue-100 opacity-60" viewBox="0 0 200 200">
@@ -332,7 +364,7 @@ const App: FC = () => {
         </div>
       </section>
 
-      <section className="py-20 md:py-28">
+      <section id="features" className="py-20 md:py-28">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {/* Section header with hand-drawn underline */}
           <div className="text-center mb-16">

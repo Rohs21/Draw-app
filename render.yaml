@@ -14,7 +14,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
-        value: https://syncsketch-rkwk.onrender.com
+        value: https://syncsketch-rkwk.onrender.com 
       - key: NODE_ENV
         value: production
 
