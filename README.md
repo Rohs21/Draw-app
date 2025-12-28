@@ -1,43 +1,93 @@
-# Turborepo starter
+<p align="center">
+	<img src="apps/excalidraw-frontend/public/Banner.png" alt="SyncSketch Banner" width="600"/>
+</p>
 
-This Turborepo starter is maintained by the Turborepo core team.
+# 🎨 SyncSketch: Real-Time Collaborative Drawing App
 
-## Using this example
+Welcome to **SyncSketch** – the next-generation collaborative whiteboard and sketching platform! Effortlessly brainstorm, wireframe, and create with your team in real time. Save your work to the cloud, invite collaborators instantly, and enjoy a seamless, blazing-fast drawing experience.
 
-Run the following command:
+## 🚀 Why SyncSketch?
+- **Real-Time Collaboration:** Draw together with your team, see live cursors, and sync changes instantly.
+- **Cloud Storage:** Save and access your sketches from anywhere, anytime.
+- **No Sign-Up Required for Guests:** Share a link and start collaborating in seconds.
+- **Smart Shapes & Tools:** Sketch rough shapes and watch them transform into perfect geometry.
+- **Flexible Export:** Download your work as PNG, SVG, or JSON.
+- **Cross-Platform:** Works beautifully on desktop, tablet, and mobile.
+- **Open Source:** Support and contribute to a growing creative community.
 
-```sh
-npx create-turbo@latest
+---
+
+## 🛠️ Getting Started
+
+Follow these steps to set up SyncSketch locally:
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Rohs21/Draw-app.git
+cd Draw-app
 ```
 
-## What's inside?
-
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
+### 2. Install Dependencies
+We use [pnpm](https://pnpm.io/) for fast, efficient monorepo management:
+```bash
+pnpm install
 ```
-cd my-turborepo
+
+### 3. Set Up the Database (Optional)
+If you want to enable cloud saving and authentication features, set up the database:
+```bash
+cd packages/db
+pnpm prisma migrate dev
+```
+
+### 4. Start the Development Servers
+Start all apps (frontend, backend, websocket, etc.) with Turbo:
+```bash
+pnpm run dev
+```
+Or start individual apps:
+```bash
+cd apps/excalidraw-frontend
+pnpm run dev
+```
+
+### 5. Open in Your Browser
+Visit [http://localhost:3000](http://localhost:3000) to start drawing!
+
+---
+
+## 📁 Monorepo Structure
+- `apps/` – Frontend, backend, and websocket services
+- `packages/` – Shared code, types, and database
+- `ui/` – Reusable UI components
+- `common/` – Shared types and utilities
+
+---
+
+## ✨ Features
+- Real-time collaborative canvas
+- Guest access with no sign-up
+- Smart shape recognition
+- Export to PNG, SVG, JSON
+- Cloud storage & authentication
+- Responsive, modern UI
+- Open source & community-driven
+
+---
+
+## 🤝 Contributing
+We welcome contributions! Please open issues or pull requests for features, bug fixes, or suggestions.
+
+---
+
+## 📄 License
+This project is [MIT Licensed](LICENSE).
+
+---
+
+<p align="center">
+	<b>Unleash your team's creativity with SyncSketch!</b>
+</p>
 
 # With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
 turbo build
