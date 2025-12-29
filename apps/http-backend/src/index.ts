@@ -8,6 +8,8 @@ import { middleware } from "./middleware";
 import { CreateUserSchema, SigninSchema, CreatRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
 import cors from "cors";
+import bcrypt from "bcrypt";
+
 
 const app = express();
 app.use(express.json());
@@ -19,6 +21,7 @@ app.use(cors({
 app.post("/signup", async (req, res) => {
 
     const parsedData = CreateUserSchema.safeParse(req.body);
+
     if (!parsedData.success) {
         console.log(parsedData.error);
         res.json({
@@ -27,10 +30,13 @@ app.post("/signup", async (req, res) => {
         return;
     }
     try {
+        const hasdedPasswrod = await bcrypt.hash(
+            parsedData.data.password,10
+        );
         const user = await prismaClient.user.create({
             data: {
                 email: parsedData.data?.username,
-                password: parsedData.data.password,
+                password: hasdedPasswrod,
                 name: parsedData.data.name
             }
         })
