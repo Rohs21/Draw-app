@@ -59,17 +59,35 @@ app.post("/signin", async (req, res) => {
         return;
     }
 
-    // TODO: Compare the hashed pws here
     const user = await prismaClient.user.findFirst({
         where: {
-            email: parsedData.data.username,
-            password: parsedData.data.password
+            email: parsedData.data.username
         }
     })
 
     if (!user) {
         res.status(403).json({
             message: "Not authorized"
+        })
+        return;
+    }
+    let isPasswordValid: boolean;
+
+    if (user.password.startsWith("$2b$")) {
+    // hashed password
+    isPasswordValid = await bcrypt.compare(
+        parsedData.data.password,
+        user.password
+    );
+    } else {
+        // plain text password
+        isPasswordValid = parsedData.data.password === user.password;
+    }
+
+    
+    if (!isPasswordValid) {
+        res.status(403).json({
+            message: "Invalid password"
         })
         return;
     }
