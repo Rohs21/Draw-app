@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="apps/excalidraw-frontend/public/Banner.png" alt="SyncSketch Banner" width="600"/>
+	<img width="1897" height="964" alt="image" src="https://github.com/user-attachments/assets/97ed73a6-60eb-415b-b187-91aa488949d0" />
 </p>
 
 # 🎨 SyncSketch: Real-Time Collaborative Drawing App
